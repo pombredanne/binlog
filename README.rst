@@ -11,7 +11,7 @@ the log and the writers can read them sequencially.
 |   **Master**    |    :target: https://travis-ci.org/nilp0inter/binlog                      |     :target: https://coveralls.io/r/nilp0inter/binlog?branch=master                 |
 |                 |    :alt: Master branch tests status                                      |     :alt: Master branch coverage status                                             |
 +-----------------+--------------------------------------------------------------------------+-------------------------------------------------------------------------------------+
-|                 | .. image:: https://travis-ci.org/nilp0inter/binlog.svg?branch=develop    |  .. image:: https://coveralls.io/repos/nilp0inter/binlog/badge.svg?branch=master    |
+|                 | .. image:: https://travis-ci.org/nilp0inter/binlog.svg?branch=develop    |  .. image:: https://coveralls.io/repos/nilp0inter/binlog/badge.svg?branch=develop   |
 |  **Develop**    |    :target: https://travis-ci.org/nilp0inter/binlog                      |     :target: https://coveralls.io/r/nilp0inter/binlog?branch=develop                |
 |                 |    :alt: Develop branch tests status                                     |     :alt: Develop branch coverage status                                            |
 +-----------------+--------------------------------------------------------------------------+-------------------------------------------------------------------------------------+
