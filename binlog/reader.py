@@ -4,77 +4,57 @@ from bsddb3 import db
 
 from .binlog import Binlog
 from .constants import LOGINDEX_NAME
+from .cursor import Cursor
 
 
 class Reader(Binlog):
     def __init__(self, path):
         self.env = self.open_environ(path)
         self.logindex = self.open_logindex(self.env, LOGINDEX_NAME)
-        self._current_log = None
-        self._logindex_idx = None
-        self._current_log_idx = None
+        self.li_cursor = Cursor(self.logindex)
 
-    @property
-    def current_log(self):
-        if self._current_log is None:
+        self.current_log = None
+        self.cl_cursor = None
 
-            cursor = self.logindex.cursor()
-            if self._logindex_idx is None:
-                data = cursor.first()
-            else:
-                cursor.set(self._logindex_idx)
-                data = cursor.next()
-            cursor.close()
-
+    def set_current_log(self):
+        if self.current_log is None:
+            data = self.li_cursor.first()
             if data is not None:
-                self._logindex_idx, value = data
-                log = db.DB(self.env)
-                log.open(value.decode('utf-8'), None, db.DB_RECNO, db.DB_RDONLY)
-                self._current_log = log
-                return self._current_log
-            else:
-                return None
-        else:
-            return self._current_log
+                _, value = data
+                self.current_log = db.DB(self.env)
+                self.current_log.open(value.decode('utf-8'),
+                                      None, db.DB_RECNO, db.DB_RDONLY)
+                self.cl_cursor = Cursor(self.current_log)
 
     def set_next_log(self):
+        data = self.li_cursor.next()
+        if data is not None:
+            _, value = data
+
+            if self.current_log is not None:
+                self.current_log.close()
+
+            self.current_log = db.DB(self.env)
+            self.current_log.open(value.decode('utf-8'),
+                                  None, db.DB_RECNO, db.DB_RDONLY)
+            self.cl_cursor = Cursor(self.current_log)
+            return True
+        else:
+            return None
+
+    def next(self):
+        if self.current_log is None:
+            self.set_current_log()
+
         if self.current_log is None:
             return None
         else:
-            self.current_log.close()
-            self._current_log = None
-
-        cursor = self.logindex.cursor()
-        cursor.set(self._logindex_idx)
-        data = cursor.next()
-        cursor.close()
-
-        if data is not None:
-            self._current_log_idx, value = data
-            log = db.DB(self.env)
-            log.open(value.decode('utf-8'), None, db.DB_RECNO, db.DB_RDONLY)
-            self._current_log = log
-            self._current_log_idx = None
-            return self._current_log
-        else:
-            return None
-
-    def next(self, try_next=True):
-        if self.current_log is not None:
-
-            cursor = self.current_log.cursor()
-            if self._current_log_idx is None:
-                data = cursor.first()
-            else:
-                cursor.set(self._current_log_idx)
-                data = cursor.next()
-            cursor.close()
-
-            if data is None:
-                self.set_next_log()
-                return self.next(try_next=False)
-            else:
-                self._current_log_idx, value = data
+            data = self.cl_cursor.next()
+            if data is not None:
+                _, value = data
                 return pickle.loads(value)
-        else:
-            return None
+            else:
+                if self.set_next_log() is not None:
+                    return self.next()
+                else:
+                    return None
