@@ -27,5 +27,6 @@ setup(name='binlog',
       include_package_data=True,
       zip_safe=False,
       install_requires=[
-          'bsddb3==6.1.0'
+          'bsddb3==6.1.0',
+          'acidfile==1.2.1'
       ])

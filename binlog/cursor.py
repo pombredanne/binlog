@@ -21,9 +21,9 @@ class CursorMethod:
 
 
 class Cursor:
-    def __init__(self, db):
+    def __init__(self, db, idx=None):
         self.db = db
-        self.idx = None
+        self.idx = idx
 
     def __getattr__(self, name):
         return CursorMethod(self.db, name, self)
