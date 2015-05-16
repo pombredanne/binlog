@@ -12,4 +12,5 @@ script:
   - tox -e $TOX_ENV
 after_success:
   - coverage combine
+  - coverage report
   - coveralls

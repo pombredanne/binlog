@@ -1,0 +1,11 @@
+[run]
+branch = True
+cover_pylib = False
+include =
+    binlog/*
+    .tox/*/binlog/*
+
+[path]
+source = 
+    binlog
+    .tox/*/binlog
