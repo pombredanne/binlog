@@ -72,4 +72,10 @@ To finish install the development dependencies:
 
 .. code-block:: bash
 
-   $ pip install -r requirements/develop.txt
+   $ pip install -r requirements/tox.txt
+
+And you are ready for run some tests!
+
+.. code-block:: bash
+
+   $ tox
