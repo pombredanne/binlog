@@ -18,126 +18,6 @@ def test_Writer_exists():
 
 
 #
-# Writer.open_environ
-#
-def test_Writer_open_environ():
-    """The Writer has the open_environ method."""
-    assert hasattr(writer.Writer, 'open_environ')
-
-
-def test_Writer_open_environ_new():
-    """If the environ does not exist then it must be created."""
-    try:
-        tmpdir = mktemp()
-
-        assert not os.path.isdir(tmpdir)
-        env = writer.Writer.open_environ(tmpdir)
-        assert os.path.isdir(tmpdir)
-        assert isinstance(env, DBEnv().__class__)
-    except:
-        raise
-    finally:
-        try:
-            shutil.rmtree(tmpdir)
-        except:
-            pass
-
-
-def test_Writer_open_environ_but_is_file():
-    """If the path passed is a file, then the environ can't be created."""
-    try:
-        tmpdir = mktemp()
-
-        open(tmpdir, 'w').close()
-        assert os.path.isfile(tmpdir)
-
-        with pytest.raises(ValueError):
-            writer.Writer.open_environ(tmpdir)
-    except:
-        raise
-    finally:
-        try:
-            os.unlink(tmpdir)
-        except:
-            pass
-
-
-def test_Writer_open_environ_but_exists():
-    """If the environ already exist, then only open it."""
-    try:
-        tmpdir = mktemp()
-
-        os.makedirs(tmpdir)
-        assert os.path.isdir(tmpdir)
-
-        with patch('os.makedirs') as mock:
-            mock.return_value = None
-            env = writer.Writer.open_environ(tmpdir)
-            assert not mock.called
-
-        assert isinstance(env, DBEnv().__class__)
-    except:
-        raise
-    finally:
-        try:
-            shutil.rmtree(tmpdir)
-        except:
-            pass
-
-#
-# Writer.open_logindex
-#
-def test_Writer_open_logindex():
-    """The Writer has the open_logindex method."""
-    assert hasattr(writer.Writer, 'open_logindex')
-
-
-def test_Writer_open_logindex_new():
-    """If the logindex does not exist then it must be created."""
-    try:
-        tmpdir = mktemp()
-        logfile = os.path.join(tmpdir, 'logindex')
-
-        assert not os.path.isfile(logfile)
-
-        logindex = writer.Writer.open_logindex(
-            writer.Writer.open_environ(tmpdir),
-            'logindex')
-
-        assert os.path.isfile(logfile)
-        assert isinstance(logindex, DB().__class__)
-    except:
-        raise
-    finally:
-        try:
-            shutil.rmtree(tmpdir)
-        except:
-            pass
-
-
-def test_Writer_open_logindex_but_is_dir():
-    """If the path passed is a file, then the environ can't be created."""
-    try:
-        tmpdir = mktemp()
-        logfile = os.path.join(tmpdir, 'logindex')
-
-        env = writer.Writer.open_environ(tmpdir)
-
-        os.makedirs(logfile)
-        assert os.path.isdir(logfile)
-
-        with pytest.raises(ValueError):
-            logindex = writer.Writer.open_logindex(env, 'logindex')
-    except:
-        raise
-    finally:
-        try:
-            os.unlink(tmpdir)
-        except:
-            pass
-
-
-#
 # Writer()
 #
 def test_Writer_instantiation():
@@ -156,10 +36,7 @@ def test_Writer_instantiation():
     except:
         raise
     finally:
-        try:
-            os.rmdir(tmpdir)
-        except:
-            pass
+        shutil.rmtree(tmpdir)
 
 
 #
@@ -197,10 +74,7 @@ def test_Writer_current_log_on_new_environ():
     except:
         raise
     finally:
-        try:
-            os.rmdir(tmpdir)
-        except:
-            pass
+        shutil.rmtree(tmpdir)
 
 
 def test_Writer_current_log_on_created_but_is_empty():
@@ -235,10 +109,7 @@ def test_Writer_current_log_on_created_but_is_empty():
     except:
         raise
     finally:
-        try:
-            os.rmdir(tmpdir)
-        except:
-            pass
+        shutil.rmtree(tmpdir)
 
 
 def test_Writer_current_log_on_created_with_space():
@@ -276,10 +147,7 @@ def test_Writer_current_log_on_created_with_space():
     except:
         raise
     finally:
-        try:
-            os.rmdir(tmpdir)
-        except:
-            pass
+        shutil.rmtree(tmpdir)
 
 
 def test_Writer_current_log_on_created_but_full():
@@ -318,10 +186,7 @@ def test_Writer_current_log_on_created_but_full():
     except:
         raise
     finally:
-        try:
-            os.rmdir(tmpdir)
-        except:
-            pass
+        shutil.rmtree(tmpdir)
 
 #
 # Writer().append
@@ -357,10 +222,7 @@ def test_Writer_append_add_data_to_current_log():
     except:
         raise
     finally:
-        try:
-            os.rmdir(tmpdir)
-        except:
-            pass
+        shutil.rmtree(tmpdir)
 
 
 def test_Writer_multiple_appends_creates_multiple_log():
@@ -388,7 +250,4 @@ def test_Writer_multiple_appends_creates_multiple_log():
     except:
         raise
     finally:
-        try:
-            os.rmdir(tmpdir)
-        except:
-            pass
+        shutil.rmtree(tmpdir)
