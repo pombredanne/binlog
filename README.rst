@@ -4,6 +4,18 @@ binlog
 Multiple writer/reader binary log. Each writer can append messages to
 the log and the writers can read them sequencially.
 
+.. image:: https://travis-ci.org/nilp0inter/binlog.svg?branch=master
+   :target: https://travis-ci.org/nilp0inter/binlog
+   :alt: Master branch tests status
+   
+.. image:: https://travis-ci.org/nilp0inter/binlog.svg?branch=develop
+   :target: https://travis-ci.org/nilp0inter/binlog
+   :alt: Develop branch tests status
+
+.. image:: https://coveralls.io/repos/nilp0inter/binlog/badge.svg
+   :target: https://coveralls.io/r/nilp0inter/binlog
+   :alt: Coverage status
+
 
 Installation
 ------------
