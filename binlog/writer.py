@@ -1,4 +1,5 @@
 import os
+import pickle
 
 from bsddb3 import db
 
@@ -44,6 +45,7 @@ class Writer:
 
     @property
     def current_log(self):
+        """Return the log DB for the current write."""
         cursor = self.logindex.cursor()
         last = cursor.last()
         cursor.close()
@@ -76,3 +78,7 @@ class Writer:
                 log.open(name, None, db.DB_RECNO, db.DB_CREATE)
 
         return log
+
+    def append(self, data):
+        """Append data to the current log DB."""
+        self.current_log.append(pickle.dumps(data))
