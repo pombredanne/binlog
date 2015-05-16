@@ -3,29 +3,35 @@ from unittest.mock import patch
 import os
 import shutil
 
-from bsddb3.db import DBEnv
+from bsddb3.db import DBEnv, DB
 import pytest
 
 from binlog import writer
 
 
+#
+# Writer
+#
 def test_Writer_exists():
     """The Writer exists."""
     assert hasattr(writer, 'Writer')
 
 
-def test_Writer_create_environ():
-    """The Writer has the create_environ method."""
-    assert hasattr(writer.Writer, 'create_environ')
+#
+# Writer.open_environ
+#
+def test_Writer_open_environ():
+    """The Writer has the open_environ method."""
+    assert hasattr(writer.Writer, 'open_environ')
 
 
-def test_Writer_create_environ_new():
-    """If the environ do not exists then it must be created."""
+def test_Writer_open_environ_new():
+    """If the environ does not exist then it must be created."""
     try:
         tmpdir = mktemp()
 
         assert not os.path.isdir(tmpdir)
-        env = writer.Writer.create_environ(tmpdir)
+        env = writer.Writer.open_environ(tmpdir)
         assert os.path.isdir(tmpdir)
         assert isinstance(env, DBEnv().__class__)
     except:
@@ -37,7 +43,7 @@ def test_Writer_create_environ_new():
             pass
 
 
-def test_Writer_create_environ_but_is_file():
+def test_Writer_open_environ_but_is_file():
     """If the path passed is a file, then the environ can't be created."""
     try:
         tmpdir = mktemp()
@@ -46,7 +52,7 @@ def test_Writer_create_environ_but_is_file():
         assert os.path.isfile(tmpdir)
 
         with pytest.raises(ValueError):
-            writer.Writer.create_environ(tmpdir)
+            writer.Writer.open_environ(tmpdir)
     except:
         raise
     finally:
@@ -56,8 +62,7 @@ def test_Writer_create_environ_but_is_file():
             pass
 
 
-
-def test_Writer_create_environ_but_exists():
+def test_Writer_open_environ_but_exists():
     """If the environ already exist, then only open it."""
     try:
         tmpdir = mktemp()
@@ -67,7 +72,7 @@ def test_Writer_create_environ_but_exists():
 
         with patch('os.makedirs') as mock:
             mock.return_value = None
-            env = writer.Writer.create_environ(tmpdir)
+            env = writer.Writer.open_environ(tmpdir)
             assert not mock.called
 
         assert isinstance(env, DBEnv().__class__)
@@ -76,5 +81,244 @@ def test_Writer_create_environ_but_exists():
     finally:
         try:
             shutil.rmtree(tmpdir)
+        except:
+            pass
+
+#
+# Writer.open_logindex
+#
+def test_Writer_open_logindex():
+    """The Writer has the open_logindex method."""
+    assert hasattr(writer.Writer, 'open_logindex')
+
+
+def test_Writer_open_logindex_new():
+    """If the logindex does not exist then it must be created."""
+    try:
+        tmpdir = mktemp()
+        logfile = os.path.join(tmpdir, 'logindex')
+
+        assert not os.path.isfile(logfile)
+
+        logindex = writer.Writer.open_logindex(
+            writer.Writer.open_environ(tmpdir),
+            'logindex')
+
+        assert os.path.isfile(logfile)
+        assert isinstance(logindex, DB().__class__)
+    except:
+        raise
+    finally:
+        try:
+            shutil.rmtree(tmpdir)
+        except:
+            pass
+
+
+def test_Writer_open_logindex_but_is_dir():
+    """If the path passed is a file, then the environ can't be created."""
+    try:
+        tmpdir = mktemp()
+        logfile = os.path.join(tmpdir, 'logindex')
+
+        env = writer.Writer.open_environ(tmpdir)
+
+        os.makedirs(logfile)
+        assert os.path.isdir(logfile)
+
+        with pytest.raises(ValueError):
+            logindex = writer.Writer.open_logindex(env, 'logindex')
+    except:
+        raise
+    finally:
+        try:
+            os.unlink(tmpdir)
+        except:
+            pass
+
+
+#
+# Writer()
+#
+def test_Writer_instantiation():
+    """
+    At the moment of instantiation the environment and the logindex
+    must be created.
+    """
+    try:
+        tmpdir = mktemp()
+
+        w = writer.Writer(tmpdir)
+        assert os.path.isdir(tmpdir)
+        assert os.path.isfile(os.path.join(tmpdir, writer.LOGINDEX_NAME))
+        assert isinstance(w.env, DBEnv().__class__)
+        assert isinstance(w.logindex, DB().__class__)
+    except:
+        raise
+    finally:
+        try:
+            os.rmdir(tmpdir)
+        except:
+            pass
+
+
+#
+# Writer().current_log
+#
+def test_Writer_current_log():
+    """The Writer has the open_environ method."""
+    assert hasattr(writer.Writer, 'current_log')
+
+
+def test_Writer_current_log_on_new_environ():
+    """
+    When a new environ/logindex is created, current_log must create a
+    new log and this new log must be registered in the logindex.
+    """
+    try:
+        tmpdir = mktemp()
+
+        w = writer.Writer(tmpdir)
+        cl = w.current_log
+
+        assert os.path.isfile(os.path.join(tmpdir, writer.LOG_PREFIX + '.1'))
+        assert isinstance(cl, DB().__class__)
+
+        cursor = w.logindex.cursor()
+        f_idx, f_name = cursor.first()
+        l_idx, l_name = cursor.last()
+        cursor.close()
+
+        expected_idx = 1
+        expected_name = (writer.LOG_PREFIX + '.1').encode('utf-8')
+
+        assert f_idx == l_idx == expected_idx
+        assert f_name == l_name ==  expected_name
+    except:
+        raise
+    finally:
+        try:
+            os.rmdir(tmpdir)
+        except:
+            pass
+
+
+def test_Writer_current_log_on_created_but_is_empty():
+    """
+    If the environ is initialized, current_log must return the already
+    created log if it have space available.
+    """
+    try:
+        tmpdir = mktemp()
+
+        w = writer.Writer(tmpdir)  # This will create the environ
+        cl = w.current_log         # This will create the first event DB
+        del cl
+        del w
+
+        w = writer.Writer(tmpdir)
+        cl = w.current_log
+
+        assert os.path.isfile(os.path.join(tmpdir, writer.LOG_PREFIX + '.1'))
+        assert isinstance(cl, DB().__class__)
+
+        cursor = w.logindex.cursor()
+        f_idx, f_name = cursor.first()
+        l_idx, l_name = cursor.last()
+        cursor.close()
+
+        expected_idx = 1
+        expected_name = (writer.LOG_PREFIX + '.1').encode('utf-8')
+
+        assert f_idx == l_idx == expected_idx
+        assert f_name == l_name ==  expected_name
+    except:
+        raise
+    finally:
+        try:
+            os.rmdir(tmpdir)
+        except:
+            pass
+
+
+def test_Writer_current_log_on_created_but_has_space():
+    """
+    If there is available space in the last log this must be returned.
+    """
+    try:
+        tmpdir = mktemp()
+
+        w = writer.Writer(tmpdir, max_log_events=10)  # This will create the environ
+        cl = w.current_log         # This will create the first event DB
+
+        for i in range(5):
+            cl.append(b'data')
+        cl.close()
+        del cl
+        del w
+
+        w = writer.Writer(tmpdir, max_log_events=10)
+        cl = w.current_log
+
+        assert os.path.isfile(os.path.join(tmpdir, writer.LOG_PREFIX + '.1'))
+        assert isinstance(cl, DB().__class__)
+
+        cursor = w.logindex.cursor()
+        f_idx, f_name = cursor.first()
+        l_idx, l_name = cursor.last()
+        cursor.close()
+
+        expected_idx = 1
+        expected_name = (writer.LOG_PREFIX + '.1').encode('utf-8')
+
+        assert f_idx == l_idx == expected_idx
+        assert f_name == l_name ==  expected_name
+    except:
+        raise
+    finally:
+        try:
+            os.rmdir(tmpdir)
+        except:
+            pass
+
+
+def test_Writer_current_log_on_created_but_is_full():
+    """
+    If there is available space in the last log this must be returned.
+    """
+    try:
+        tmpdir = mktemp()
+
+        w = writer.Writer(tmpdir, max_log_events=10)  # This will create
+                                                      # the environ
+        cl = w.current_log         # This will create the first event DB
+
+        for i in range(10):
+            cl.append(b'data')
+        cl.close()
+        del cl
+        del w
+
+        w = writer.Writer(tmpdir, max_log_events=10)
+        cl = w.current_log
+
+        assert os.path.isfile(os.path.join(tmpdir, writer.LOG_PREFIX + '.2'))
+        assert isinstance(cl, DB().__class__)
+
+        cursor = w.logindex.cursor()
+        f_idx, f_name = cursor.first()
+        l_idx, l_name = cursor.last()
+        cursor.close()
+
+        expected_idx = 2
+        expected_name = (writer.LOG_PREFIX + '.2').encode('utf-8')
+
+        assert f_idx != l_idx == expected_idx
+        assert f_name != l_name ==  expected_name
+    except:
+        raise
+    finally:
+        try:
+            os.rmdir(tmpdir)
         except:
             pass
