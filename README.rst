@@ -42,7 +42,7 @@ You can now finish the installation:
 
 .. code-block:: bash
 
-   pip install binlog
+   $ pip install binlog
 
 
 Development
