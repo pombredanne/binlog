@@ -42,18 +42,10 @@ class Register:
                 return None
 
             if last is not None and idx != last:
-                if last > idx:
-                    other = self.reg[record.liidx].pop(last)
-                    current = self.reg[record.liidx].pop(idx)
-                else:
-                    current = self.reg[record.liidx].pop(idx)
-                    other = self.reg[record.liidx].pop(last)
-                if other[0] < current[0]:
-                    insort(self.reg[record.liidx],
-                           (other[0], current[1]))
-                else:
-                    insort(self.reg[record.liidx],
-                           (current[0], other[1]))
+                current = self.reg[record.liidx].pop(idx)
+                other = self.reg[record.liidx].pop(last)
+                insort(self.reg[record.liidx],
+                       (other[0], current[1]))
             else:
                 self.reg[record.liidx][idx] = (l, r)
                 self.add(record, last=idx)
