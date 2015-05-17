@@ -4,7 +4,7 @@ import pickle
 from acidfile import ACIDFile
 from bsddb3 import db
 
-from .binlog import Binlog
+from .binlog import Binlog, Record
 from .constants import LOGINDEX_NAME
 from .cursor import Cursor
 
@@ -86,6 +86,15 @@ class Reader(Binlog):
                     return self.next()
                 else:
                     return None
+
+    def next_record(self):
+        data = self.next()
+        if data is None:
+            return None
+        else:
+            return Record(liidx=self.li_cursor.idx,
+                          clidx=self.cl_cursor.idx,
+                          value=data)
 
     def save(self):
         if self.checkpoint is None:

@@ -1,6 +1,9 @@
+from collections import namedtuple
 import os
 
 from bsddb3 import db
+
+Record = namedtuple('Record', ['liidx', 'clidx', 'value'])
 
 
 class Binlog:

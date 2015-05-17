@@ -29,3 +29,7 @@ def test_import_binlog_constants():
 
 def test_import_binlog_reader():
     assert can_import('binlog.reader')
+
+
+def test_import_binlog_register():
+    assert can_import('binlog.register')
