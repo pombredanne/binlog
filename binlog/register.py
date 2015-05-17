@@ -1,4 +1,7 @@
+from bisect import insort
 from copy import deepcopy
+
+from .binlog import Record
 
 
 class Register:
@@ -13,6 +16,9 @@ class Register:
             self.reg = deepcopy(reg)
         else:
             self.reg = {}
+
+        self.liidx = 1
+        self.clidx = 1
 
     def add(self, record, last=None):
         if self.reg == {}: 
@@ -32,7 +38,8 @@ class Register:
                     return None
             else:
                 if last is None:
-                    self.reg[record.liidx].append((record.clidx, record.clidx))
+                    insort(self.reg[record.liidx],
+                           (record.clidx, record.clidx))
                 return None
 
             if last is not None and idx != last:
@@ -43,9 +50,22 @@ class Register:
                     current = self.reg[record.liidx].pop(idx)
                     other = self.reg[record.liidx].pop(last)
                 if other[0] < current[0]:
-                    self.reg[record.liidx].append((other[0], current[1]))
+                    insort(self.reg[record.liidx],
+                           (other[0], current[1]))
                 else:
-                    self.reg[record.liidx].append((current[0], other[1]))
+                    insort(self.reg[record.liidx],
+                           (current[0], other[1]))
             else:
                 self.reg[record.liidx][idx] = (l, r)
                 self.add(record, last=idx)
+
+    def next_li(self):
+        self.clidx = 1
+        r = Record(self.liidx, self.clidx, None)
+        self.liidx += 1
+        return r
+
+    def next_cl(self):
+        r = Record(self.liidx, self.clidx, None)
+        self.clidx += 1
+        return r

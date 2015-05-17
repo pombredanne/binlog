@@ -196,3 +196,56 @@ def test_Register_add_randomized_range(clidx):
         r.add(Record(liidx=1, clidx=i, value='data'))
 
     assert [(clidx, clidx+100)] == r.reg[1]
+
+
+@pytest.mark.randomize(clidx=int, min_num=-100, max_num=100, ncalls=100)
+def test_Register_reg_is_always_sorted(clidx):
+    """
+    """
+    r = register.Register()
+
+    l = list(range(clidx, clidx+101)) * randint(1, 3)
+    shuffle(l)
+    for i in l:
+        r.add(Record(liidx=1, clidx=i, value='data'))
+        assert sorted(r.reg[1]) == r.reg[1]
+
+
+#
+# Register().next_li
+#
+def test_Register_next_li():
+    """The Register has the next_li method."""
+    assert hasattr(register.Register, 'next_li')
+
+
+def test_Register_next_li_iteration():
+    """The method next_li must iterate the liidx value and reset clidx to 1."""
+    r = register.Register()
+
+    for i in range(1, 101):
+        for x in range(randint(0, 10)):
+            r.next_cl()
+        record = r.next_li()
+
+        assert record.liidx == i
+        assert record.clidx == 1
+
+
+#
+# Register().next_ci
+#
+def test_Register_next_cl():
+    """The Register has the next_li method."""
+    assert hasattr(register.Register, 'next_cl')
+
+
+def test_Register_next_cl_iteration():
+    """The method next_cl must iterate the clidx value."""
+    r = register.Register()
+
+    for i in range(1, 101):
+        record = r.next_cl()
+
+        assert record.clidx == i
+        assert record.liidx == 1
