@@ -88,3 +88,14 @@ class Register:
         n = get_next(r.clidx, self.reg.get(self.liidx, []))
         self.clidx = n
         return Record(self.liidx, self.clidx, None)
+
+    def __contains__(self, item):
+        """Check if a record is in this register."""
+        if not item.liidx in self.reg:
+            return False
+        for l, r in self.reg[item.liidx]:
+            if l <= item.clidx <= r:
+                return True
+            elif r < item.clidx:
+                return False
+        return False

@@ -7,12 +7,15 @@ from bsddb3 import db
 from .binlog import Binlog, Record
 from .constants import LOGINDEX_NAME
 from .cursor import Cursor
+from .register import Register
 
 
 class Reader(Binlog):
     def __init__(self, path, checkpoint=None):
         self.env = self.open_environ(path)
         self.logindex = self.open_logindex(self.env, LOGINDEX_NAME)
+        self.register = Register()
+        self.retry = False
 
         if checkpoint is not None:
             self.checkpoint = os.path.join(path, checkpoint)
@@ -26,23 +29,15 @@ class Reader(Binlog):
         if checkpoint is not None:
             try:
                 with ACIDFile(self.checkpoint, mode='rb') as cp:
-                    data = pickle.load(cp)
-                liidx = data['liidx']
-                clidx = data['clidx']
+                    self.register = pickle.load(cp)
+                    self.register.reset()
             except:
                 self.li_cursor = Cursor(self.logindex)
 
                 self.current_log = None
                 self.cl_cursor = None
             else:
-                self.li_cursor = Cursor(self.logindex, liidx)
-                data = self.li_cursor.current()
-                if data is not None:
-                    _, value = data
-                    self.current_log = db.DB(self.env)
-                    self.current_log.open(value.decode('utf-8'),
-                                          None, db.DB_RECNO, db.DB_RDONLY)
-                    self.cl_cursor = Cursor(self.current_log, clidx)
+                self.li_cursor = Cursor(self.logindex)
 
     def set_current_log(self):
         if self.current_log is None:
@@ -70,22 +65,32 @@ class Reader(Binlog):
         else:
             return None
 
-    def next(self):
-        if self.current_log is None:
-            self.set_current_log()
-
-        if self.current_log is None:
-            return None
+    def next(self, next_log=False):
+        if not self.retry:
+            pos = self.register.next(log=next_log)
+            self.set_cursors(pos)
         else:
-            data = self.cl_cursor.next()
-            if data is not None:
-                _, value = data
-                return pickle.loads(value)
+            self.retry = False
+
+        try:
+            data = self.cl_cursor.current()
+        except db.DBInvalidArgError as exc:
+            errcode, _ = exc.args
+            if errcode == 22:
+                data = None
             else:
-                if self.set_next_log() is not None:
-                    return self.next()
-                else:
-                    return None
+                raise
+
+        if data is None:
+            if self.has_next_log():
+                return self.next(next_log=True)
+            else:
+                self.retry = True
+                return None
+        else:
+            _, value = data
+            return pickle.loads(value)
+
 
     def next_record(self):
         data = self.next()
@@ -101,14 +106,32 @@ class Reader(Binlog):
             raise ValueError('checkpoint was not set')
 
         with ACIDFile(self.checkpoint, mode='wb') as cp:
-            try:
-                clidx = self.cl_cursor.idx
-            except:
-                clidx = None
+            pickle.dump(self.register, cp)
 
-            try:
-                liidx = self.li_cursor.idx
-            except:
-                liidx = None
+    def ack(self, record):
+        """Acknowledge some data given by `next_record`."""
+        self.register.add(record)
 
-            pickle.dump({'clidx': clidx, 'liidx': liidx}, cp)
+    def has_next_log(self):
+        """Returns `True` if there is a next event log."""
+        last_idx = self.li_cursor.idx
+        try:
+            idx, _ = self.li_cursor.next()
+        except:
+            return False
+        else:
+            return True
+        finally:
+            self.li_cursor.idx = last_idx
+
+    def set_cursors(self, rec):
+        self.li_cursor.idx = rec.liidx
+        try:
+            _, logname = self.li_cursor.current()
+        except:
+            raise
+        else:
+            self.current_log = db.DB(self.env)
+            self.current_log.open(logname.decode('utf-8'),
+                                  None, db.DB_RECNO, db.DB_RDONLY)
+            self.cl_cursor = Cursor(self.current_log, rec.clidx)
