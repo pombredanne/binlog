@@ -93,9 +93,8 @@ class Register:
         """Check if a record is in this register."""
         if not item.liidx in self.reg:
             return False
-        for l, r in self.reg[item.liidx]:
+        for l, r in self.reg[item.liidx]:  # pragma: no branch
             if l <= item.clidx <= r:
                 return True
-            elif r < item.clidx:
+            elif l > item.clidx:  # pragma: no cover
                 return False
-        return False

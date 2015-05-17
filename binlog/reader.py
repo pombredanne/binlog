@@ -30,40 +30,14 @@ class Reader(Binlog):
             try:
                 with ACIDFile(self.checkpoint, mode='rb') as cp:
                     self.register = pickle.load(cp)
-                    self.register.reset()
             except:
                 self.li_cursor = Cursor(self.logindex)
 
                 self.current_log = None
                 self.cl_cursor = None
             else:
+                self.register.reset()
                 self.li_cursor = Cursor(self.logindex)
-
-    def set_current_log(self):
-        if self.current_log is None:
-            data = self.li_cursor.first()
-            if data is not None:
-                _, value = data
-                self.current_log = db.DB(self.env)
-                self.current_log.open(value.decode('utf-8'),
-                                      None, db.DB_RECNO, db.DB_RDONLY)
-                self.cl_cursor = Cursor(self.current_log)
-
-    def set_next_log(self):
-        data = self.li_cursor.next()
-        if data is not None:
-            _, value = data
-
-            if self.current_log is not None:
-                self.current_log.close()
-
-            self.current_log = db.DB(self.env)
-            self.current_log.open(value.decode('utf-8'),
-                                  None, db.DB_RECNO, db.DB_RDONLY)
-            self.cl_cursor = Cursor(self.current_log)
-            return True
-        else:
-            return None
 
     def next(self, next_log=False):
         if not self.retry:
@@ -78,7 +52,7 @@ class Reader(Binlog):
             errcode, _ = exc.args
             if errcode == 22:
                 data = None
-            else:
+            else:  # pragma: no cover
                 raise
 
         if data is None:
@@ -126,12 +100,8 @@ class Reader(Binlog):
 
     def set_cursors(self, rec):
         self.li_cursor.idx = rec.liidx
-        try:
-            _, logname = self.li_cursor.current()
-        except:
-            raise
-        else:
-            self.current_log = db.DB(self.env)
-            self.current_log.open(logname.decode('utf-8'),
-                                  None, db.DB_RECNO, db.DB_RDONLY)
-            self.cl_cursor = Cursor(self.current_log, rec.clidx)
+        _, logname = self.li_cursor.current()
+        self.current_log = db.DB(self.env)
+        self.current_log.open(logname.decode('utf-8'),
+                              None, db.DB_RECNO, db.DB_RDONLY)
+        self.cl_cursor = Cursor(self.current_log, rec.clidx)

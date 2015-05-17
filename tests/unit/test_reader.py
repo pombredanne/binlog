@@ -197,6 +197,19 @@ def test_Reader_save():
     assert hasattr(reader.Reader, 'save')
 
 
+def test_Reader_save_raises_if_no_checkpoint_defined():
+    try:
+        tmpdir = mktemp()
+
+        r = reader.Reader(tmpdir)
+        with pytest.raises(ValueError):
+            r.save()
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)
+
+
 @pytest.mark.parametrize("max_log_events", range(1, 10))
 def test_Reader_can_save_and_restore_its_process(max_log_events):
     """
