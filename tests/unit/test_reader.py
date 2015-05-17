@@ -16,6 +16,10 @@ def test_Reader_exists():
 #
 # Reader().next
 #
+def test_Reader_next():
+    """The Reader has the next method."""
+    assert hasattr(reader.Reader, 'next')
+
 def test_Reader_next_only_one_db():
     """
     Reader.next must return all entries in the log.
@@ -182,8 +186,13 @@ def test_Reader_new_Reader_starts_over():
 
 
 #
-# Reader().checkpoint
+# Reader().save
 #
+def test_Reader_save():
+    """The Reader has the save method."""
+    assert hasattr(reader.Reader, 'save')
+
+
 @pytest.mark.parametrize("max_log_events", range(1, 10))
 def test_Reader_can_save_and_restore_its_process(max_log_events):
     """
@@ -213,6 +222,42 @@ def test_Reader_can_save_and_restore_its_process(max_log_events):
             assert i == data
 
         assert r.next() is None
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)
+
+
+#
+# Reader().next_record
+#
+def test_Reader_next_record():
+    """The Reader has the next_record method."""
+    assert hasattr(reader.Reader, 'next_record')
+
+
+@pytest.mark.parametrize("max_log_events", range(1, 10))
+def test_Reader_next_record(max_log_events):
+    """
+    The next_record method retrieve the next register and return a Record
+    object.
+    """
+    try:
+        tmpdir = mktemp()
+
+        # Write 10 entries
+        w = writer.Writer(tmpdir, max_log_events=max_log_events)
+        for i in range(10):
+            w.append(i)
+        w.current_log.sync()
+
+        # Read first 5 entries
+        r = reader.Reader(tmpdir)
+        for i in range(10):
+            data = r.next_record().value
+            assert i == data
+
+        assert r.next_record() is None
     except:
         raise
     finally:
