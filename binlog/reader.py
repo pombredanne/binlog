@@ -16,6 +16,7 @@ class Reader(Binlog):
         self.logindex = self.open_logindex(self.env, LOGINDEX_NAME)
         self.register = Register()
         self.retry = False
+        self.last_liidx = None 
 
         if checkpoint is not None:
             self.checkpoint = os.path.join(path, checkpoint)
@@ -99,9 +100,14 @@ class Reader(Binlog):
             self.li_cursor.idx = last_idx
 
     def set_cursors(self, rec):
-        self.li_cursor.idx = rec.liidx
-        _, logname = self.li_cursor.current()
-        self.current_log = db.DB(self.env)
-        self.current_log.open(logname.decode('utf-8'),
-                              None, db.DB_RECNO, db.DB_RDONLY)
-        self.cl_cursor = Cursor(self.current_log, rec.clidx)
+        if rec.liidx != self.last_liidx:
+            self.last_liidx = rec.liidx
+            self.li_cursor.idx = rec.liidx
+            _, logname = self.li_cursor.current()
+            self.current_log = db.DB(self.env)
+            self.current_log.open(logname.decode('utf-8'),
+                                  None, db.DB_RECNO, db.DB_RDONLY)
+
+            self.cl_cursor = Cursor(self.current_log, rec.clidx)
+        else:
+            self.cl_cursor.idx = rec.clidx

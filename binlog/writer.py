@@ -12,6 +12,8 @@ class Writer(Binlog):
         self.env = self.open_environ(path)
         self.logindex = self.open_logindex(self.env, LOGINDEX_NAME)
         self.max_log_events = max_log_events
+        self._current_log = None
+        self.next_will_create_log = False
 
     @property
     def current_log(self):
@@ -47,8 +49,15 @@ class Writer(Binlog):
                 log = db.DB(self.env)
                 log.open(name, None, db.DB_RECNO, db.DB_CREATE)
 
-        return log
+        self._current_log = log
+        return self._current_log
 
     def append(self, data):
         """Append data to the current log DB."""
-        self.current_log.append(pickle.dumps(data))
+        if self._current_log is None or self.next_will_create_log:
+            self.next_will_create_log = False
+            self.current_log
+
+        idx = self._current_log.append(pickle.dumps(data))
+
+        self.next_will_create_log = (idx >= self.max_log_events)
