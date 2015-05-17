@@ -1,6 +1,6 @@
 import pytest
 from pytest import dict_of
-from random import shuffle, randint
+from random import shuffle, randint, sample
 
 from binlog import register
 from binlog.binlog import Record
@@ -218,13 +218,12 @@ def test_Register_next_li():
     """The Register has the next_li method."""
     assert hasattr(register.Register, 'next_li')
 
-
 def test_Register_next_li_iteration():
     """The method next_li must iterate the liidx value and reset clidx to 1."""
     r = register.Register()
 
-    for i in range(1, 101):
-        for x in range(randint(0, 10)):
+    for i in range(2, 101):
+        for x in range(randint(1, 10)):
             r.next_cl()
         record = r.next_li()
 
@@ -249,3 +248,107 @@ def test_Register_next_cl_iteration():
 
         assert record.clidx == i
         assert record.liidx == 1
+
+
+#
+# Register().reset
+#
+def test_Register_reset():
+    """The Register has the reset method."""
+    assert hasattr(register.Register, 'reset')
+
+
+def test_Register_reset_do_reset():
+    """Register.reset resets liidx & clidx."""
+    r = register.Register()
+    for i in range(100):
+        if randint(0, 1): r.next_li()
+        if randint(0, 1): r.next_cl()
+
+    r.reset()
+    assert r.liidx == 0
+    assert r.clidx == 0
+
+
+#
+# Register().next
+#
+def test_Register_next():
+    """The Register has the next method."""
+    assert hasattr(register.Register, 'next')
+
+
+def test_Register_next_on_empty_reg_cl():
+    """next method when called behave like next_cl."""
+    r = register.Register()
+    o = register.Register()
+    for i in range(100):
+        r.next()
+        o.next_cl()
+        assert r.liidx == o.liidx
+        assert r.clidx == o.clidx
+
+
+def test_Register_next_on_empty_reg_li():
+    """next method when called whith log=True behave like next_li."""
+    r = register.Register()
+    o = register.Register()
+    for i in range(100):
+        r.next(log=True)
+        o.next_li()
+        assert r.liidx == o.liidx
+        assert r.clidx == o.clidx
+
+
+@pytest.mark.randomize(num=int, min_num=1, max_num=100, ncalls=100)
+def test_Register_next_on_populated_reg(num):
+    """
+    When next(log=False) is called in a populated reg it will skip the
+    values in reg.
+    """
+    numbers = list(range(1, 101))
+    s = sample(numbers, num)
+
+    r = register.Register()
+    for n in s:
+        r.add(Record(liidx=1, clidx=n, value='data'))
+
+    x = []
+    for _ in range(100 - num):
+        n = r.next()
+        x.append(n.clidx)
+        
+    assert sorted(x + s) == numbers 
+
+
+@pytest.mark.randomize(num=int, min_num=1, max_num=10000, ncalls=100)
+def test_Register_next_on_populated_reg_multiple_logindex(num):
+    """
+    When next(log=False) is called in a populated reg it will skip the
+    values in reg. Also if next(log=True) is called it will return the
+    next's li value not in reg.
+    """
+    numbers = [] 
+    for li in range(1, 101):
+        for cl in range(1, 101):
+            numbers.append((li, cl))
+
+    s = sample(numbers, num)
+
+    r = register.Register()
+    for li, cl in s:
+        r.add(Record(liidx=li, clidx=cl, value='data'))
+
+    x = []
+    for i in range(10000 - num):
+        n = r.next()
+        while n.clidx > 100:
+            n = r.next(log=True)
+        x.append((n.liidx, n.clidx))
+
+    expected = []
+    for i in range(1, 101):
+        for n in range(1, 101):
+            expected.append((i, n))
+
+    assert sorted(x + s) == expected

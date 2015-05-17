@@ -17,8 +17,7 @@ class Register:
         else:
             self.reg = {}
 
-        self.liidx = 1
-        self.clidx = 1
+        self.liidx = self.clidx = 0
 
     def add(self, record, last=None):
         if self.reg == {}: 
@@ -59,13 +58,41 @@ class Register:
                 self.reg[record.liidx][idx] = (l, r)
                 self.add(record, last=idx)
 
-    def next_li(self):
-        self.clidx = 1
+    def next_cl(self):
+        if self.liidx == 0:
+            self.liidx = 1
+        self.clidx += 1
         r = Record(self.liidx, self.clidx, None)
-        self.liidx += 1
         return r
 
-    def next_cl(self):
-        r = Record(self.liidx, self.clidx, None)
-        self.clidx += 1
-        return r
+    def next_li(self):
+        if self.liidx == 0:
+            self.liidx = 1
+        else:
+            self.liidx += 1
+        self.clidx = 0
+        return self.next_cl()
+
+    def reset(self):
+        """Resets liidx & clidx."""
+        self.liidx = 0
+        self.clidx = 0
+
+    def next(self, log=False):
+        """This method return the next record not in self.reg."""
+        def get_next(i, l):
+            for l, r in l:
+                if l <= i <= r:
+                    return r+1
+                elif l > i:
+                    break
+            return i
+
+        if log:
+            r = self.next_li()
+        else:
+            r = self.next_cl()
+
+        n = get_next(r.clidx, self.reg.get(self.liidx, []))
+        self.clidx = n
+        return Record(self.liidx, self.clidx, None)
