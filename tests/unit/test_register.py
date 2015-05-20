@@ -46,6 +46,13 @@ def test_Register_add():
     assert hasattr(register.Register, 'add')
 
 
+def test_Register_add_must_be_Record():
+    """The Register has the add only accepts Record objects."""
+    r = register.Register()
+    with pytest.raises(ValueError):
+        r.add(None)
+
+
 @pytest.mark.randomize(data=(int, int, str), ncalls=100)
 def test_Register_add_on_empty(data):
     """

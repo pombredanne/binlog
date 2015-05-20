@@ -20,6 +20,9 @@ class Register:
         self.liidx = self.clidx = 0
 
     def add(self, record, last=None):
+        if type(record) != Record:
+            raise ValueError('`record` must be a Record instance.')
+
         if self.reg == {}: 
             self.reg[record.liidx] = [(record.clidx, record.clidx)]
         elif not record.liidx in self.reg:
