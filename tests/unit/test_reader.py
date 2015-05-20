@@ -240,7 +240,7 @@ def test_Reader_can_save_and_restore_its_process(max_log_events):
             data = r.next_record()
             assert i == data.value
 
-        assert r.next() is None
+        assert r.next_record() is None
     except:
         raise
     finally:
@@ -277,7 +277,7 @@ def test_Reader_can_save_and_restore_its_process_non_lineal(max_log_events):
             data = r.next_record()
             assert data.value % 2 != 0
 
-        assert r.next() is None
+        assert r.next_record() is None
     except:
         raise
     finally:
