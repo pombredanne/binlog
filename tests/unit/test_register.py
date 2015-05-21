@@ -1,6 +1,8 @@
-import pytest
-from pytest import dict_of
 from random import shuffle, randint, sample
+
+from hypothesis import given
+from hypothesis import strategies as st
+import pytest
 
 from binlog import register
 from binlog.binlog import Record
@@ -53,11 +55,12 @@ def test_Register_add_must_be_Record():
         r.add(None)
 
 
-@pytest.mark.randomize(data=(int, int, str), ncalls=100)
+@given(data=st.tuples(st.integers(), st.integers(), st.text()))
 def test_Register_add_on_empty(data):
     """
     When the add method is called on an empty Register, the `reg`
     attribute must have the same data as the record.
+
     """
     original = Record(*data)
     r = register.Register()
@@ -67,14 +70,14 @@ def test_Register_add_on_empty(data):
     assert [(original.clidx, original.clidx)] == r.reg[original.liidx]
 
 
-@pytest.mark.randomize(data=(int, int, str), min_num=2, ncalls=100)
+@given(data=st.tuples(st.integers(min_value=2), st.integers(), st.text()))
 def test_Register_add_but_different_liidx(data):
     """
     When the add method is called on a non empty Register. Then, the
     `reg` attribute must have the new `liidx` if the previous Record
     added have a different `liidx`.
-    """
 
+    """
     r = register.Register()
     r.add(Record(liidx=1, clidx=1, value='value'))
 
@@ -85,14 +88,14 @@ def test_Register_add_but_different_liidx(data):
     assert [(original.clidx, original.clidx)] == r.reg[original.liidx]
 
 
-@pytest.mark.randomize(clidx=int, min_num=10, ncalls=100)
+@given(clidx=st.integers(min_value=10))
 def test_Register_add_same_liidx_non_consecutive_clidx(clidx):
     """
     When the add method is called on a non empty Register. Then, the key
     liidx on the `reg` attribute must have the new clidx appended in a
     tuple with this shape (clidx, clidx).
-    """
 
+    """
     r = register.Register()
     r.add(Record(liidx=1, clidx=2, value='first'))
     r.add(Record(liidx=1, clidx=clidx, value='second'))
@@ -101,7 +104,7 @@ def test_Register_add_same_liidx_non_consecutive_clidx(clidx):
     assert (clidx, clidx) in r.reg[1]
 
 
-@pytest.mark.randomize(clidx=int, ncalls=100)
+@given(clidx=st.integers())
 def test_Register_add_same_liidx_and_consecutive_clidx_upperbound(clidx):
     """
     If in the llidx key of the `reg` attribute exists a tuple which
@@ -117,7 +120,6 @@ def test_Register_add_same_liidx_and_consecutive_clidx_upperbound(clidx):
     Register.reg[1] = [(1, 5)]
 
     """
-
     r = register.Register()
     r.add(Record(liidx=1, clidx=clidx, value='first'))
     r.add(Record(liidx=1, clidx=clidx+1, value='second'))
@@ -125,7 +127,7 @@ def test_Register_add_same_liidx_and_consecutive_clidx_upperbound(clidx):
     assert [(clidx, clidx+1)] == r.reg[1]
 
 
-@pytest.mark.randomize(clidx=int, ncalls=100)
+@given(clidx=st.integers())
 def test_Register_add_same_liidx_and_consecutive_clidx_lowerbound(clidx):
     """
     If in the llidx key of the `reg` attribute exists a tuple which
@@ -141,7 +143,6 @@ def test_Register_add_same_liidx_and_consecutive_clidx_lowerbound(clidx):
     Register.reg[1] = [(3, 9)]
 
     """
-
     r = register.Register()
     r.add(Record(liidx=1, clidx=clidx, value='first'))
     r.add(Record(liidx=1, clidx=clidx-1, value='second'))
@@ -149,7 +150,7 @@ def test_Register_add_same_liidx_and_consecutive_clidx_lowerbound(clidx):
     assert [(clidx-1, clidx)] == r.reg[1]
 
 
-@pytest.mark.randomize(clidx=int, ncalls=100)
+@given(clidx=st.integers())
 def test_Register_add_same_liidx_and_consecutive_clidx_lowerbound_and_upperbound(clidx):
     """
 
@@ -167,7 +168,6 @@ def test_Register_add_same_liidx_and_consecutive_clidx_lowerbound_and_upperbound
     Register.reg[1] = [(1, 9)]
 
     """
-
     r = register.Register()
     r.add(Record(liidx=1, clidx=clidx-1, value='first'))
     r.add(Record(liidx=1, clidx=clidx+1, value='second'))
@@ -176,12 +176,12 @@ def test_Register_add_same_liidx_and_consecutive_clidx_lowerbound_and_upperbound
     assert [(clidx-1, clidx+1)] == r.reg[1]
 
 
-@pytest.mark.randomize(clidx=int, min_num=-50, max_num=50, ncalls=100)
+@given(clidx=st.integers(min_value=-50, max_value=50))
 def test_Register_add_same_liidx_inside_existing_range(clidx):
     """
     If the clidx was added before, just ignore it.
-    """
 
+    """
     r = register.Register()
     for i in range(-50, 51):
         r.add(Record(liidx=1, clidx=i, value='first'))
@@ -191,7 +191,7 @@ def test_Register_add_same_liidx_inside_existing_range(clidx):
     assert [(-50, 50)] == r.reg[1]
 
 
-@pytest.mark.randomize(clidx=int, min_num=-100, max_num=100, ncalls=100)
+@given(clidx=st.integers(min_value=-100, max_value=100))
 def test_Register_add_randomized_range(clidx):
     """
     """
@@ -205,7 +205,7 @@ def test_Register_add_randomized_range(clidx):
     assert [(clidx, clidx+100)] == r.reg[1]
 
 
-@pytest.mark.randomize(clidx=int, min_num=-100, max_num=100, ncalls=100)
+@given(clidx=st.integers(min_value=-100, max_value=100))
 def test_Register_reg_is_always_sorted(clidx):
     """
     """
@@ -307,7 +307,7 @@ def test_Register_next_on_empty_reg_li():
         assert r.clidx == o.clidx
 
 
-@pytest.mark.randomize(num=int, min_num=1, max_num=100, ncalls=100)
+@given(num=st.integers(min_value=1, max_value=100))
 def test_Register_next_on_populated_reg(num):
     """
     When next(log=False) is called in a populated reg it will skip the
@@ -328,7 +328,7 @@ def test_Register_next_on_populated_reg(num):
     assert sorted(x + s) == numbers 
 
 
-@pytest.mark.randomize(num=int, min_num=1, max_num=10000, ncalls=100)
+@given(num=st.integers(min_value=1, max_value=10000))
 def test_Register_next_on_populated_reg_multiple_logindex(num):
     """
     When next(log=False) is called in a populated reg it will skip the
