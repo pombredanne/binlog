@@ -109,5 +109,7 @@ class Reader(Binlog):
                                   None, db.DB_RECNO, db.DB_RDONLY)
 
             self.cl_cursor = Cursor(self.current_log, rec.clidx)
+        elif self.cl_cursor is None:
+            raise RuntimeError()
         else:
             self.cl_cursor.idx = rec.clidx
