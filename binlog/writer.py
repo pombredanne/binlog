@@ -15,8 +15,7 @@ class Writer(Binlog):
         self._current_log = None
         self.next_will_create_log = False
 
-    @property
-    def current_log(self):
+    def get_current_log(self):
         """Return the log DB for the current write."""
         cursor = self.logindex.cursor()
         last = cursor.last()
@@ -56,7 +55,7 @@ class Writer(Binlog):
         """Append data to the current log DB."""
         if self._current_log is None or self.next_will_create_log:
             self.next_will_create_log = False
-            self.current_log
+            self.get_current_log()
 
         idx = self._current_log.append(pickle.dumps(data))
 

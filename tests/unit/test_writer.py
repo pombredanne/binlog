@@ -40,23 +40,23 @@ def test_Writer_instantiation():
 
 
 #
-# Writer().current_log
+# Writer().get_current_log
 #
-def test_Writer_current_log():
+def test_Writer_get_current_log():
     """The Writer has the open_environ method."""
-    assert hasattr(writer.Writer, 'current_log')
+    assert hasattr(writer.Writer, 'get_current_log')
 
 
-def test_Writer_current_log_on_new_environ():
+def test_Writer_get_current_log_on_new_environ():
     """
-    When a new environ/logindex is created, current_log must create a
+    When a new environ/logindex is created, get_current_log must create a
     new log and this new log must be registered in the logindex.
     """
     try:
         tmpdir = mktemp()
 
         w = writer.Writer(tmpdir)
-        cl = w.current_log
+        cl = w.get_current_log()
 
         assert os.path.isfile(os.path.join(tmpdir, writer.LOG_PREFIX + '.1'))
         assert isinstance(cl, DB().__class__)
@@ -77,21 +77,21 @@ def test_Writer_current_log_on_new_environ():
         shutil.rmtree(tmpdir)
 
 
-def test_Writer_current_log_on_created_but_is_empty():
+def test_Writer_get_current_log_on_created_but_is_empty():
     """
-    If the environ is initialized, current_log must return the already
+    If the environ is initialized, get_current_log must return the already
     created log if it have space available.
     """
     try:
         tmpdir = mktemp()
 
         w = writer.Writer(tmpdir)  # This will create the environ
-        cl = w.current_log         # This will create the first event DB
+        cl = w.get_current_log()         # This will create the first event DB
         del cl
         del w
 
         w = writer.Writer(tmpdir)
-        cl = w.current_log
+        cl = w.get_current_log()
 
         assert os.path.isfile(os.path.join(tmpdir, writer.LOG_PREFIX + '.1'))
         assert isinstance(cl, DB().__class__)
@@ -112,7 +112,7 @@ def test_Writer_current_log_on_created_but_is_empty():
         shutil.rmtree(tmpdir)
 
 
-def test_Writer_current_log_on_created_with_space():
+def test_Writer_get_current_log_on_created_with_space():
     """
     If there is available space in the last log this must be returned.
     """
@@ -120,7 +120,7 @@ def test_Writer_current_log_on_created_with_space():
         tmpdir = mktemp()
 
         w = writer.Writer(tmpdir, max_log_events=10)  # This will create the environ
-        cl = w.current_log         # This will create the first event DB
+        cl = w.get_current_log()         # This will create the first event DB
 
         for i in range(5):
             cl.append(b'data')
@@ -129,7 +129,7 @@ def test_Writer_current_log_on_created_with_space():
         del w
 
         w = writer.Writer(tmpdir, max_log_events=10)
-        cl = w.current_log
+        cl = w.get_current_log()
 
         assert os.path.isfile(os.path.join(tmpdir, writer.LOG_PREFIX + '.1'))
         assert isinstance(cl, DB().__class__)
@@ -150,7 +150,7 @@ def test_Writer_current_log_on_created_with_space():
         shutil.rmtree(tmpdir)
 
 
-def test_Writer_current_log_on_created_but_full():
+def test_Writer_get_current_log_on_created_but_full():
     """
     If there is available space in the last log this must be returned.
     """
@@ -159,7 +159,7 @@ def test_Writer_current_log_on_created_but_full():
 
         w = writer.Writer(tmpdir, max_log_events=10)  # This will create
                                                       # the environ
-        cl = w.current_log         # This will create the first event DB
+        cl = w.get_current_log()         # This will create the first event DB
 
         for i in range(10):
             cl.append(b'data')
@@ -168,7 +168,7 @@ def test_Writer_current_log_on_created_but_full():
         del w
 
         w = writer.Writer(tmpdir, max_log_events=10)
-        cl = w.current_log
+        cl = w.get_current_log()
 
         assert os.path.isfile(os.path.join(tmpdir, writer.LOG_PREFIX + '.2'))
         assert isinstance(cl, DB().__class__)
@@ -196,7 +196,7 @@ def test_Writer_append():
     assert hasattr(writer.Writer, 'append')
 
 
-def test_Writer_append_add_data_to_current_log():
+def test_Writer_append_add_data_to_get_current_log():
     """
     When append() is called the data passed is pickelized and stored in
     the current log.
@@ -210,7 +210,7 @@ def test_Writer_append_add_data_to_current_log():
         w = writer.Writer(tmpdir)
         w.append(expected)
 
-        cl = w.current_log
+        cl = w.get_current_log()
         cursor = cl.cursor()
         idx, data = cursor.first()
         cursor.close()
