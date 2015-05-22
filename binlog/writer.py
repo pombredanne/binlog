@@ -15,7 +15,7 @@ class Writer(Binlog):
         self._current_log = None
         self.next_will_create_log = False
 
-    def get_current_log(self):
+    def set_current_log(self):
         """Return the log DB for the current write."""
         cursor = self.logindex.cursor()
         last = cursor.last()
@@ -39,11 +39,11 @@ class Writer(Binlog):
         if last:
             eidx, _ = last
             if eidx >= self.max_log_events:
-                name = LOG_PREFIX + '.' + str(idx+1)
+                log.close()
 
+                name = LOG_PREFIX + '.' + str(idx+1)
                 self.logindex.append(name)
                 self.logindex.sync()
-                log.close()
 
                 log = db.DB(self.env)
                 log.open(name, None, db.DB_RECNO, db.DB_CREATE)
@@ -53,9 +53,14 @@ class Writer(Binlog):
 
     def append(self, data):
         """Append data to the current log DB."""
-        if self._current_log is None or self.next_will_create_log:
+        if self.next_will_create_log:
             self.next_will_create_log = False
-            self.get_current_log()
+            if self._current_log is not None:
+                self._current_log.close()
+                self._current_log = None
+
+        if self._current_log is None:
+            self.set_current_log()
 
         idx = self._current_log.append(pickle.dumps(data))
 

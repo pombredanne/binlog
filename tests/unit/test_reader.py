@@ -35,7 +35,7 @@ def test_Reader_next_only_one_db():
         w = writer.Writer(tmpdir, max_log_events=100)
         for i in range(10):
             w.append(i)
-        w.get_current_log().sync()
+        w.set_current_log().sync()
 
         # Read 10 entries
         r = reader.Reader(tmpdir)
@@ -62,7 +62,7 @@ def test_Reader_next_multiple_db():
         w = writer.Writer(tmpdir, max_log_events=2)
         for i in range(10):
             w.append(i)
-        w.get_current_log().sync()
+        w.set_current_log().sync()
 
         # Read 10 entries
         r = reader.Reader(tmpdir)
@@ -90,7 +90,7 @@ def test_Reader_next_only_one_db_with_writings():
         w = writer.Writer(tmpdir, max_log_events=100)
         for i in range(10):
             w.append(i)
-        w.get_current_log().sync()
+        w.set_current_log().sync()
 
         # Read 10 entries
         r = reader.Reader(tmpdir)
@@ -102,7 +102,7 @@ def test_Reader_next_only_one_db_with_writings():
 
         for i in range(10, 20):
             w.append(i)
-        w.get_current_log().sync()
+        w.set_current_log().sync()
 
         # Read 10 entries
         for i in range(10, 20):
@@ -129,7 +129,7 @@ def test_Reader_next_only_multiple_dbs_with_writings(max_log_events):
         w = writer.Writer(tmpdir, max_log_events=max_log_events)
         for i in range(10):
             w.append(i)
-        w.get_current_log().sync()
+        w.set_current_log().sync()
 
         # Read 10 entries
         r = reader.Reader(tmpdir)
@@ -141,7 +141,7 @@ def test_Reader_next_only_multiple_dbs_with_writings(max_log_events):
 
         for i in range(10, 20):
             w.append(i)
-        w.get_current_log().sync()
+        w.set_current_log().sync()
 
         # Read 10 entries
         for i in range(10, 20):
@@ -166,7 +166,7 @@ def test_Reader_new_Reader_starts_over():
         w = writer.Writer(tmpdir, max_log_events=100)
         for i in range(10):
             w.append(i)
-        w.get_current_log().sync()
+        w.set_current_log().sync()
 
         # Read 10 entries
         r = reader.Reader(tmpdir)
@@ -224,7 +224,7 @@ def test_Reader_can_save_and_restore_its_process(max_log_events):
         w = writer.Writer(tmpdir, max_log_events=max_log_events)
         for i in range(10):
             w.append(i)
-        w.get_current_log().sync()
+        w.set_current_log().sync()
 
         # Read first 5 entries
         r = reader.Reader(tmpdir, checkpoint='reader1')
@@ -261,7 +261,7 @@ def test_Reader_can_save_and_restore_its_process_non_lineal(max_log_events):
         w = writer.Writer(tmpdir, max_log_events=max_log_events)
         for i in range(100):
             w.append(i)
-        w.get_current_log().sync()
+        w.set_current_log().sync()
 
         # Read first 5 entries
         r = reader.Reader(tmpdir, checkpoint='reader1')
@@ -304,7 +304,7 @@ def test_Reader_next_record(max_log_events):
         w = writer.Writer(tmpdir, max_log_events=max_log_events)
         for i in range(10):
             w.append(i)
-        w.get_current_log().sync()
+        w.set_current_log().sync()
 
         # Read first 5 entries
         r = reader.Reader(tmpdir)
@@ -351,7 +351,7 @@ def test_Reader_ack_adds_to_register(max_log_events):
         w = writer.Writer(tmpdir, max_log_events=max_log_events)
         for i in range(10):
             w.append(i)
-        w.get_current_log().sync()
+        w.set_current_log().sync()
 
         # Read first 5 entries
         r = reader.Reader(tmpdir)
@@ -384,7 +384,7 @@ def test_Reader_has_next_log_one_log():
         # Write 10 entries
         w = writer.Writer(tmpdir)
         w.append('DATA')
-        w.get_current_log().sync()
+        w.set_current_log().sync()
 
         # Read first 5 entries
         r = reader.Reader(tmpdir)
@@ -405,7 +405,7 @@ def test_Reader_has_next_log_two_logs():
         w = writer.Writer(tmpdir, max_log_events=1)
         w.append('DATA')
         w.append('DATA')
-        w.get_current_log().sync()
+        w.set_current_log().sync()
 
         r = reader.Reader(tmpdir)
         r.next_record()
@@ -436,7 +436,7 @@ def test_Reader_set_cursors_from_record():
         w = writer.Writer(tmpdir, max_log_events=1)
         w.append('DATA1')
         w.append('DATA2')
-        w.get_current_log().sync()
+        w.set_current_log().sync()
 
         r = reader.Reader(tmpdir)
 

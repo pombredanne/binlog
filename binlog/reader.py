@@ -9,36 +9,39 @@ from .constants import LOGINDEX_NAME
 from .cursor import Cursor
 from .register import Register
 
+CHECKPOINT_DIR = 'checkpoints'
+
 
 class Reader(Binlog):
     def __init__(self, path, checkpoint=None):
         self.env = self.open_environ(path)
+
         self.logindex = self.open_logindex(self.env, LOGINDEX_NAME)
-        self.register = Register()
-        self.retry = False
+        self.li_cursor = Cursor(self.logindex)
         self.last_liidx = None 
 
-        if checkpoint is not None:
-            self.checkpoint = os.path.join(path, checkpoint)
-        else:
-            self.checkpoint = None
-            self.li_cursor = Cursor(self.logindex)
+        self.register = None 
 
-            self.current_log = None
-            self.cl_cursor = None
+        self.retry = False
+
+        self.current_log = None
+        self.cl_cursor = None
+
+        self.checkpoint = None
 
         if checkpoint is not None:
+            self.checkpoint = os.path.join(path, CHECKPOINT_DIR, checkpoint)
             try:
                 with ACIDFile(self.checkpoint, mode='rb') as cp:
                     self.register = pickle.load(cp)
             except:
-                self.li_cursor = Cursor(self.logindex)
-
-                self.current_log = None
-                self.cl_cursor = None
+                pass
             else:
                 self.register.reset()
-                self.li_cursor = Cursor(self.logindex)
+
+        if self.register is None:
+            self.register = Register()
+
 
     def next(self, next_log=False):
         if not self.retry:
@@ -79,6 +82,9 @@ class Reader(Binlog):
     def save(self):
         if self.checkpoint is None:
             raise ValueError('checkpoint was not set')
+
+        if not os.path.isdir(self.checkpoint):
+            os.makedirs(self.checkpoint)
 
         with ACIDFile(self.checkpoint, mode='wb') as cp:
             pickle.dump(self.register, cp)
