@@ -38,7 +38,7 @@ the path of the installed library. As an example if ``db.h`` is in
    $ export BERKELEYDB_DIR=/usr  # because 'bsddb3' will append 'include/db.h'
 
 
-You can now finish the installation:
+You can now finish the installation with:
 
 .. code-block:: bash
 
@@ -59,13 +59,14 @@ Clone this package and install the package in develop mode.
    $ pip install -e .
 
 
-To finish install the development dependencies:
+To finish, install the development dependencies:
 
 .. code-block:: bash
 
    $ pip install -r requirements/tox.txt
 
-And you are ready for run some tests!
+
+Now you are ready for run some tests!
 
 .. code-block:: bash
 
