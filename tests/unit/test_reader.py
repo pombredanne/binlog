@@ -569,7 +569,7 @@ def test_Reader_status_return_dict():
 
 
 @given(num=st.integers(min_value=1, max_value=100))
-def test_Reader_status_return_dict(num):
+def test_Reader_status_return_dict_with_status(num):
     """
     The method Reader.status returns a dictionary with the indexes and
     the status of each index.
