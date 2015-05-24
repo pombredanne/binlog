@@ -12,7 +12,7 @@ from binlog.binlog import Record
 # Reader
 #
 def test_Reader_exists():
-    """The Reader exists."""
+    """The Reader class exists."""
     assert hasattr(reader, 'Reader')
 
 
@@ -201,6 +201,12 @@ def test_Reader_save_raises_if_no_checkpoint_defined():
     try:
         tmpdir = mktemp()
 
+        # Write 10 entries
+        w = writer.Writer(tmpdir)
+        for i in range(10):
+            w.append(i)
+        w.set_current_log().sync()
+
         r = reader.Reader(tmpdir)
         with pytest.raises(ValueError):
             r.save()
@@ -233,6 +239,43 @@ def test_Reader_can_save_and_restore_its_process(max_log_events):
             r.ack(data)
             assert i == data.value
         r.save()  # Make a checkpoint
+
+        # Read last 5 entries
+        r = reader.Reader(tmpdir, checkpoint='reader1')
+        for i in range(5, 10):
+            data = r.next_record()
+            assert i == data.value
+
+        assert r.next_record() is None
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)
+
+
+@pytest.mark.parametrize("max_log_events", range(1, 10))
+def test_Reader_can_save_and_restore_its_process_multiple_save(max_log_events):
+    """
+    If the method checkpoint is called then a new instance must start
+    with the first non-aknowledge item.
+
+    """
+    try:
+        tmpdir = mktemp()
+
+        # Write 10 entries
+        w = writer.Writer(tmpdir, max_log_events=max_log_events)
+        for i in range(10):
+            w.append(i)
+        w.set_current_log().sync()
+
+        # Read first 5 entries
+        r = reader.Reader(tmpdir, checkpoint='reader1')
+        for i in range(5):
+            data = r.next_record()
+            r.ack(data)
+            assert i == data.value
+            r.save()  # Make a checkpoint
 
         # Read last 5 entries
         r = reader.Reader(tmpdir, checkpoint='reader1')
@@ -284,6 +327,33 @@ def test_Reader_can_save_and_restore_its_process_non_lineal(max_log_events):
         shutil.rmtree(tmpdir)
 
 #
+# Reader().load
+#
+def test_Reader_load():
+    """The Reader has the load method."""
+    assert hasattr(reader.Reader, 'load')
+
+
+def test_Reader_load_raises_if_no_checkpoint():
+    try:
+        tmpdir = mktemp()
+
+        # Write 10 entries
+        w = writer.Writer(tmpdir)
+        for i in range(10):
+            w.append(i)
+        w.set_current_log().sync()
+
+        r = reader.Reader(tmpdir)
+        with pytest.raises(ValueError):
+            r.load()
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)
+
+
+#
 # Reader().next_record
 #
 def test_Reader_next_record():
@@ -324,13 +394,33 @@ def test_Reader_next_record(max_log_events):
 #
 def test_Reader_ack():
     """The Reader has the ack method."""
-    assert hasattr(reader.Reader, 'ack')
+    try:
+        tmpdir = mktemp()
+
+        # Write 10 entries
+        w = writer.Writer(tmpdir)
+        for i in range(10):
+            w.append(i)
+        w.set_current_log().sync()
+
+        assert hasattr(reader.Reader, 'ack')
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)
 
 
 def test_Reader_register():
     """The Reader() has the register attribute."""
     try:
         tmpdir = mktemp()
+
+        # Write 10 entries
+        w = writer.Writer(tmpdir)
+        for i in range(10):
+            w.append(i)
+        w.set_current_log().sync()
+
         assert hasattr(reader.Reader(tmpdir), 'register')
     except:
         raise
@@ -448,6 +538,56 @@ def test_Reader_set_cursors_from_record():
 
         r.set_cursors(Record(liidx=1, clidx=1, value=None))
         assert r.cl_cursor.current() == (1, pickle.dumps('DATA1'))
+
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)
+
+#
+# Reader().status
+#
+def test_Reader_status():
+    """The Reader class has the status method."""
+    assert hasattr(reader.Reader, 'status')
+
+
+def test_Reader_status_return_dict():
+    """The method Reader.status returns a dictionary."""
+    try:
+        tmpdir = mktemp()
+
+        w = writer.Writer(tmpdir, max_log_events=1)
+        r = reader.Reader(tmpdir)
+        assert type(r.status()) == dict
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)
+
+
+def test_Reader_status_return_dict():
+    """
+    The method Reader.status returns a dictionary with the indexes and
+    the status of each index.
+    """
+    try:
+        tmpdir = mktemp()
+
+        w = writer.Writer(tmpdir, max_log_events=1)
+        r = reader.Reader(tmpdir)
+
+        for i in range(1, 11):
+            w.append(i)
+            w.set_current_log().sync()
+
+            assert i in r.status()
+            assert r.status()[i] is False
+
+        for i in range(1, 11):
+            data = r.next_record()
+            r.ack(data)
+            assert r.status()[i] is True
 
     except:
         raise

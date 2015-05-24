@@ -55,9 +55,11 @@ class Writer(Binlog):
         """Append data to the current log DB."""
         if self.next_will_create_log:
             self.next_will_create_log = False
-            if self._current_log is not None:
+            if self._current_log is not None:  # pragma: no branch
                 self._current_log.close()
                 self._current_log = None
+            else:  # pragma: no cover
+                pass
 
         if self._current_log is None:
             self.set_current_log()

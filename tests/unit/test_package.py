@@ -33,3 +33,7 @@ def test_import_binlog_reader():
 
 def test_import_binlog_register():
     assert can_import('binlog.register')
+
+
+def test_import_binlog_queue():
+    assert can_import('binlog.queue')

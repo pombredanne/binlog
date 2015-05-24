@@ -5,19 +5,18 @@ from acidfile import ACIDFile
 from bsddb3 import db
 
 from .binlog import Binlog, Record
-from .constants import LOGINDEX_NAME
+from .constants import LOGINDEX_NAME, CHECKPOINT_DIR
 from .cursor import Cursor
 from .register import Register
-
-CHECKPOINT_DIR = 'checkpoints'
 
 
 class Reader(Binlog):
     def __init__(self, path, checkpoint=None):
-        self.env = self.open_environ(path)
+        self.env = self.open_environ(path, create=False)
 
         self.logindex = self.open_logindex(self.env, LOGINDEX_NAME)
         self.li_cursor = Cursor(self.logindex)
+        self.li_cursor.first()
         self.last_liidx = None 
 
         self.register = None 
@@ -27,17 +26,11 @@ class Reader(Binlog):
         self.current_log = None
         self.cl_cursor = None
 
-        self.checkpoint = None
-
-        if checkpoint is not None:
+        if checkpoint is None:
+            self.checkpoint = None
+        else:
             self.checkpoint = os.path.join(path, CHECKPOINT_DIR, checkpoint)
-            try:
-                with ACIDFile(self.checkpoint, mode='rb') as cp:
-                    self.register = pickle.load(cp)
-            except:
-                pass
-            else:
-                self.register.reset()
+            self.load()
 
         if self.register is None:
             self.register = Register()
@@ -79,6 +72,19 @@ class Reader(Binlog):
                           clidx=self.cl_cursor.idx,
                           value=data)
 
+    def load(self):
+        if self.checkpoint is None:
+            raise ValueError('checkpoint was not set')
+
+        try:
+            with ACIDFile(self.checkpoint, mode='rb') as cp:
+                self.register = pickle.load(cp)
+        except:
+            return False
+        else:
+            self.register.reset()
+            return True
+
     def save(self):
         if self.checkpoint is None:
             raise ValueError('checkpoint was not set')
@@ -86,8 +92,13 @@ class Reader(Binlog):
         if not os.path.isdir(self.checkpoint):
             os.makedirs(self.checkpoint)
 
-        with ACIDFile(self.checkpoint, mode='wb') as cp:
-            pickle.dump(self.register, cp)
+        try:
+            with ACIDFile(self.checkpoint, mode='wb') as cp:
+                pickle.dump(self.register, cp)
+        except:  # pragma: no cover
+            return False
+        else:
+            return True
 
     def ack(self, record):
         """Acknowledge some data given by `next_record`."""
@@ -117,3 +128,31 @@ class Reader(Binlog):
             self.cl_cursor = Cursor(self.current_log, rec.clidx)
         else:
             self.cl_cursor.idx = rec.clidx
+
+    def status(self):
+        res = {}
+
+        li_idx = self.li_cursor.idx
+
+        data = self.li_cursor.first()
+        while data is not None:
+            idx, name = data
+            cdb = db.DB(self.env)
+            cdb.open(name.decode('utf-8'), None, db.DB_RECNO, db.DB_RDONLY)
+
+            cur = cdb.cursor()
+            cdata = cur.last()
+            cur.close()
+
+            cdb.close()
+            if cdata is not None:
+                cidx, _ = cdata
+                status = ([(1, cidx)] == self.register.reg.get(idx))
+            else:
+                status = False
+            res[idx] = status
+
+            data = self.li_cursor.next()
+
+        self.li_cursor.idx = li_idx
+        return res
