@@ -1,6 +1,8 @@
 from tempfile import mktemp
 import shutil
 
+from hypothesis import given
+from hypothesis import strategies as st
 import pytest
 
 from binlog import queue, writer, reader
@@ -37,7 +39,9 @@ def test_Queue_get_nowait_on_writed_queue():
         q = queue.Queue(tmpdir)
         for i in range(10):
             assert q.get_nowait().value == i
-        assert q.get_nowait() is None
+
+        with pytest.raises(queue.Empty):
+            assert q.get_nowait()
     except:
         raise
     finally:
@@ -45,10 +49,11 @@ def test_Queue_get_nowait_on_writed_queue():
 
 
 def test_Queue_get_nowait_on_empty_queue():
-    """Queue.get_nowait on an empty queue must return None **always**."""
+    """Queue.get_nowait on an empty queue must raise Empty **always**."""
     tmpdir = mktemp()
     q = queue.Queue(tmpdir)
-    assert q.get_nowait() is None
+    with pytest.raises(queue.Empty):
+        assert q.get_nowait()
 
 
 #
@@ -57,6 +62,14 @@ def test_Queue_get_nowait_on_empty_queue():
 def test_Queue_get():
     """The Queue class has the get method."""
     assert hasattr(queue.Queue, 'get')
+
+
+def test_Queue_get_noblock_on_empty_queue():
+    """Queue.get(block=False) on an empty queue must raise Empty **always**."""
+    tmpdir = mktemp()
+    q = queue.Queue(tmpdir)
+    with pytest.raises(queue.Empty):
+        assert q.get(block=False)
 
 
 def test_Queue_get_waits_until_data():
@@ -83,6 +96,22 @@ def test_Queue_get_waits_until_data():
             assert q.get().value == i
 
         t.join()
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)
+
+
+def test_Queue_get_timeouts():
+    """Queue.get has a timeout parameter."""
+    try:
+        tmpdir = mktemp()
+
+        q = queue.Queue(tmpdir)
+        q.put('TEST')
+        q.get()
+        with pytest.raises(queue.Empty):
+            q.get(timeout=1)
     except:
         raise
     finally:
@@ -170,25 +199,42 @@ def test_Queue_join_waits():
     try:
         tmpdir = mktemp()
 
-        q = queue.Queue(tmpdir, max_log_events=500000)
-        for i in range(100000):
+        q = queue.Queue(tmpdir, max_log_events=101)
+        for i in range(100):
             q.put('TEST')
         q._writer.set_current_log().sync()
 
         def joining_thread():
-            for i in range(100000):
+            for i in range(100):
                 q.task_done(q.get())
 
 
         t = Thread(target=joining_thread)
         t.daemon = True
-        t.start()
 
         assert q._reader.status() == {1: False}
+        t.start()
         q.join()
         assert q._reader.status() == {1: True}
 
         t.join()
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)
+
+
+def test_Queue_join_timeout():
+    """Queue.join waits until all is completed or timeout is reached."""
+    try:
+        tmpdir = mktemp()
+
+        q = queue.Queue(tmpdir, max_log_events=101)
+        q.put('TEST')
+        q._writer.set_current_log().sync()
+
+        with pytest.raises(TimeoutError):
+            q.join(timeout=1)
     except:
         raise
     finally:
