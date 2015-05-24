@@ -2,7 +2,8 @@ binlog
 ======
 
 Multiple writer/reader binary log. Each writer can append messages to
-the log and the writers can read them sequencially.
+the log and the readers can read them sequencially. Each reader is
+independent.
 
 +-----------------+--------------------------------------------------------------------------+-------------------------------------------------------------------------------------+
 |                 |                          **Tests**                                       |                                     **Coverage**                                    |
@@ -22,7 +23,7 @@ Installation
 
 `binlog` depends on `bsddb3` which in turn depends on `Berkeley DB` (C library).
 
-To be able to install `bsddb3` you need to install `Berkeley DB` first
+To be able to install `bsddb3` you need to install `Berkeley DB` first.
 
 .. code-block:: bash
 
@@ -48,7 +49,8 @@ You can now finish the installation with:
 Development
 -----------
 
-Follow the instructions in the **Installation** section except for the last one.
+Follow the instructions in the **Installation** section except for the
+last one.
 
 Clone this package and install the package in develop mode.
 
