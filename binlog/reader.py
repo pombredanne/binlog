@@ -147,10 +147,7 @@ class Reader(Binlog):
             cdb.close()
             if cdata is not None:
                 cidx, _ = cdata
-                status = ([(1, cidx)] == self.register.reg.get(idx))
-            else:
-                status = False
-            res[idx] = status
+                res[idx] = ([(1, cidx)] == self.register.reg.get(idx))
 
             data = self.li_cursor.next()
 

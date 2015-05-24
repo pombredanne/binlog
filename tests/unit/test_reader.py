@@ -1,8 +1,10 @@
 from tempfile import mktemp
+import pickle
 import shutil
 
+from hypothesis import given
+from hypothesis import strategies as st
 import pytest
-import pickle
 
 from binlog import reader, writer
 from binlog.binlog import Record
@@ -566,7 +568,8 @@ def test_Reader_status_return_dict():
         shutil.rmtree(tmpdir)
 
 
-def test_Reader_status_return_dict():
+@given(num=st.integers(min_value=1, max_value=100))
+def test_Reader_status_return_dict(num):
     """
     The method Reader.status returns a dictionary with the indexes and
     the status of each index.
@@ -574,21 +577,20 @@ def test_Reader_status_return_dict():
     try:
         tmpdir = mktemp()
 
-        w = writer.Writer(tmpdir, max_log_events=1)
+        w = writer.Writer(tmpdir, max_log_events=10)
         r = reader.Reader(tmpdir)
 
-        for i in range(1, 11):
+        for i in range(num):
             w.append(i)
-            w.set_current_log().sync()
 
-            assert i in r.status()
-            assert r.status()[i] is False
+        w.set_current_log().sync()
+        assert not any(r.status().values())
 
-        for i in range(1, 11):
+        for i in range(num):
             data = r.next_record()
             r.ack(data)
-            assert r.status()[i] is True
 
+        assert all(r.status().values())
     except:
         raise
     finally:
