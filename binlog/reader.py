@@ -43,11 +43,14 @@ class Reader(Binlog):
                 self.set_cursors(pos)
             except db.DBInvalidArgError as exc:
                 errcode, _ = exc.args
-                self.retry = True
                 if errcode == 22:
+                    self.retry = True
                     return None
                 else:  # pragma: no cover
                     raise
+            except db.DBNoSuchFileError as exc:
+                self.retry = True
+                return None
         else:
             self.retry = False
 

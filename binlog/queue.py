@@ -33,7 +33,7 @@ class Queue:
     def _get(self):
         try:
             return self._reader.next_record()
-        except (db.DBInvalidArgError, ValueError):
+        except ValueError:
             self.__reader = None
             return None
 
