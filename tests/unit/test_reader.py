@@ -595,3 +595,59 @@ def test_Reader_status_return_dict_with_status(num):
         raise
     finally:
         shutil.rmtree(tmpdir)
+
+#
+# No database exceptions
+#
+def test_no_environment():
+    tmpdir = mktemp()
+    with pytest.raises(ValueError):
+        reader.Reader(tmpdir)
+
+
+def test_environment_but_no_databases():
+    try:
+        tmpdir = mktemp()
+        w = writer.Writer(tmpdir)
+        r = reader.Reader(tmpdir)
+        assert r.next_record() is None
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)
+
+
+def test_environment_but_no_databases_and_after_read_is_fine():
+    try:
+        tmpdir = mktemp()
+        w = writer.Writer(tmpdir)
+        r = reader.Reader(tmpdir)
+        assert r.next_record() is None
+
+        w.append('TEST')
+        w.set_current_log().sync()
+
+        assert r.next_record() is not None
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)
+
+
+def test_environment_but_no_databases_and_after_read_is_fine_multiple_retry():
+    try:
+        tmpdir = mktemp()
+        w = writer.Writer(tmpdir)
+        r = reader.Reader(tmpdir)
+
+        for i in range(10):
+            assert r.next_record() is None
+
+        w.append('TEST')
+        w.set_current_log().sync()
+
+        assert r.next_record() is not None
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)

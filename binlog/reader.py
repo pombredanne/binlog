@@ -39,9 +39,28 @@ class Reader(Binlog):
     def next(self, next_log=False):
         if not self.retry:
             pos = self.register.next(log=next_log)
-            self.set_cursors(pos)
+            try:
+                self.set_cursors(pos)
+            except db.DBInvalidArgError as exc:
+                errcode, _ = exc.args
+                self.retry = True
+                if errcode == 22:
+                    return None
+                else:  # pragma: no cover
+                    raise
         else:
             self.retry = False
+
+        if self.cl_cursor is None:
+            try:
+                self.set_cursors(self.register.current)
+            except db.DBInvalidArgError as exc:
+                errcode, _ = exc.args
+                self.retry = True
+                if errcode == 22:
+                    return None
+                else:  # pragma: no cover
+                    raise
 
         try:
             data = self.cl_cursor.current()
@@ -117,7 +136,7 @@ class Reader(Binlog):
             self.li_cursor.idx = last_idx
 
     def set_cursors(self, rec):
-        if rec.liidx != self.last_liidx:
+        if self.cl_cursor is None or rec.liidx != self.last_liidx:
             self.last_liidx = rec.liidx
             self.li_cursor.idx = rec.liidx
             _, logname = self.li_cursor.current()
