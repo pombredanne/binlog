@@ -251,3 +251,88 @@ def test_Writer_multiple_appends_creates_multiple_log():
         raise
     finally:
         shutil.rmtree(tmpdir)
+
+#
+# Writer.delete
+#
+def test_Writer_delete():
+    """The Writer has the delete method."""
+    assert hasattr(writer.Writer, 'delete')
+
+
+def test_Writer_delete_unused_db():
+    """The Writer.delete method can delete an unused database."""
+    from binlog.constants import LOG_PREFIX
+    try:
+        tmpdir = mktemp()
+
+        w = writer.Writer(tmpdir, max_log_events=1)
+
+        w.append("TEST DATA")
+        assert os.path.exists(os.path.join(tmpdir, LOG_PREFIX + '.1'))
+
+        w.append("TEST DATA")
+        assert os.path.exists(os.path.join(tmpdir, LOG_PREFIX + '.2'))
+
+        w.delete(1)
+        
+        assert not os.path.exists(os.path.join(tmpdir, LOG_PREFIX + '.1'))
+        assert os.path.exists(os.path.join(tmpdir, LOG_PREFIX + '.2'))
+
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)
+
+
+def test_Writer_cant_delete_first_db_when_used():
+    """
+    The Writer.delete method can't delete the first database when there
+    is only one database.
+
+    """
+    try:
+        tmpdir = mktemp()
+
+        w = writer.Writer(tmpdir)
+
+        w.append("TEST DATA")
+        w.set_current_log().sync()
+
+        with pytest.raises(ValueError):
+            w.delete(1)
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)
+
+
+def test_Writer_cant_delete_current():
+    """
+    The Writer.delete method can't delete the current database.
+
+    """
+    from binlog.constants import LOG_PREFIX
+    try:
+        tmpdir = mktemp()
+
+        w = writer.Writer(tmpdir, max_log_events=2)
+
+        for i in range(1, 11): 
+            w.append("TEST DATA")
+            w.set_current_log().sync()
+
+            with pytest.raises(ValueError):
+                w.delete(i)
+
+            w.append("TEST DATA")
+            w.set_current_log().sync()
+
+            if i > 1:
+                w.delete(i-1)
+                assert not os.path.exists(
+                    os.path.join(tmpdir, LOG_PREFIX + '.' + str(i-1)))
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)

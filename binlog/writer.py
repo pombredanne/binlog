@@ -9,11 +9,13 @@ from .constants import *
 
 class Writer(Binlog):
     def __init__(self, path, max_log_events=MAX_LOG_EVENTS):
+        self.path = path
         self.env = self.open_environ(path)
         self.logindex = self.open_logindex(self.env, LOGINDEX_NAME)
         self.max_log_events = max_log_events
         self._current_log = None
         self.next_will_create_log = False
+        self._current_idx = None
 
     def set_current_log(self):
         """Return the log DB for the current write."""
@@ -25,12 +27,25 @@ class Writer(Binlog):
             name = LOG_PREFIX + '.1'
             self.logindex.append(name)
             self.logindex.sync()
+            self._current_idx = 1
+            log = db.DB(self.env)
+            log.open(name, None, db.DB_RECNO, db.DB_CREATE)
         else:
             idx, value = last
+            self._current_idx = idx
             name = value.decode('utf-8')
 
-        log = db.DB(self.env)
-        log.open(name, None, db.DB_RECNO, db.DB_CREATE)
+            log = db.DB(self.env)
+            try:
+                log.open(name, None, db.DB_RECNO)
+            except Exception as exc:
+                # The last db was deleted
+                name = LOG_PREFIX + '.' + str(idx + 1)
+                self._current_idx = idx + 1
+
+                log = db.DB(self.env)
+                log.open(name, None, db.DB_RECNO, db.DB_CREATE)
+
 
         cursor = log.cursor()
         last = cursor.last()
@@ -44,6 +59,7 @@ class Writer(Binlog):
                 name = LOG_PREFIX + '.' + str(idx+1)
                 self.logindex.append(name)
                 self.logindex.sync()
+                self._current_idx = idx + 1
 
                 log = db.DB(self.env)
                 log.open(name, None, db.DB_RECNO, db.DB_CREATE)
@@ -67,3 +83,23 @@ class Writer(Binlog):
         idx = self._current_log.append(pickle.dumps(data))
 
         self.next_will_create_log = (idx >= self.max_log_events)
+
+    def delete(self, idx):
+        """Delete a log DB."""
+        cursor = self.logindex.cursor()
+        try:
+            data = cursor.last()
+            if data is None:
+                raise ValueError('Invalid database')
+            else:
+                last, _ = data
+                if last == idx:
+                    raise ValueError('Cannot delete the current database.')
+        except:
+            raise
+        else:
+            self.env.dbremove(
+                os.path.join(self.path, LOG_PREFIX + '.' + str(idx)))
+        finally:
+            cursor.close()
+
