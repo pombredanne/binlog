@@ -3,14 +3,14 @@ import os
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(HERE, 'README.rst')).read()
-NEWS = open(os.path.join(HERE, 'TODO.rst')).read()
+CHANGELOG = open(os.path.join(HERE, 'CHANGELOG.rst')).read()
 
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 
 setup(name='binlog',
       version=VERSION,
       description="Store/Recover python objects sequencially.",
-      long_description=README + '\n\n' + NEWS,
+      long_description=README + '\n\n' + CHANGELOG,
       classifiers=[
           'Programming Language :: Python :: 3.4',
           'Development Status :: 4 - Beta',
