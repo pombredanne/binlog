@@ -1,7 +1,3 @@
-"""
-binlog setup script.
-
-"""
 from setuptools import setup, find_packages
 import os
 
@@ -17,8 +13,11 @@ setup(name='binlog',
       long_description=README + '\n\n' + NEWS,
       classifiers=[
           'Programming Language :: Python :: 3.4',
+          'Development Status :: 4 - Beta',
+          'Topic :: Database',
+          'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)'
       ],
-      keywords='event log',
+      keywords='binary event log',
       author='Roberto Abdelkader Martínez Pérez',
       author_email='robertomartinezp@gmail.com',
       url='https://github.com/nilp0inter/binlog',
