@@ -169,7 +169,10 @@ class Reader(Binlog):
             cdb.close()
             if cdata is not None:
                 cidx, _ = cdata
-                res[idx] = ([(1, cidx)] == self.register.reg.get(idx))
+                reg = self.register.reg.get(idx)
+                res[idx] = [(1, cidx)] == reg
+                if not reg and idx > 1:
+                    res[idx - 1] = False
 
             data = self.li_cursor.next()
 
