@@ -20,7 +20,16 @@ class Binlog:
                     raise ValueError('environment does not exists.')
 
         env = db.DBEnv()
-        env.open(path, db.DB_INIT_CDB|db.DB_INIT_MPOOL|db.DB_CREATE)
+
+        flags = 0;
+        flags |= db.DB_CREATE
+        flags |= db.DB_INIT_MPOOL
+        flags |= db.DB_INIT_LOCK
+        flags |= db.DB_INIT_LOG
+        flags |= db.DB_INIT_TXN
+
+        env.open(path, flags)
+
         return env
 
     @staticmethod

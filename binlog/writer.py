@@ -98,8 +98,15 @@ class Writer(Binlog):
         except:
             raise
         else:
-            self.env.dbremove(
-                os.path.join(self.path, LOG_PREFIX + '.' + str(idx)))
+            txn = self.env.txn_begin(flags=db.DB_TXN_NOWAIT)
+            dbname = os.path.join(self.path, LOG_PREFIX + '.' + str(idx))
+            try:
+                self.env.dbremove(dbname, txn=txn)
+            except Exception as exc:
+                txn.abort()
+                raise ValueError('Cannot delete this database') from exc
+            else:
+                txn.commit()
         finally:
             cursor.close()
 
