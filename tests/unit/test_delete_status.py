@@ -40,3 +40,25 @@ def test_status_and_delete_match(reads):
         raise
     finally:
         shutil.rmtree(tmpdir)
+
+
+def test_status_method_works_after_deletion():
+    from binlog.reader import Reader
+    from binlog.writer import Writer
+
+    try:
+        tmpdir = mktemp()
+
+        writer = Writer(tmpdir, max_log_events=10)
+        reader = Reader(tmpdir, checkpoint='test')
+
+        for x in range(25):
+            writer.append(x)
+
+        reader.status()
+        writer.delete(1)
+        reader.status()
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)

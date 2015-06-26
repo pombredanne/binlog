@@ -159,20 +159,23 @@ class Reader(Binlog):
         data = self.li_cursor.first()
         while data is not None:
             idx, name = data
-            cdb = db.DB(self.env)
-            cdb.open(name.decode('utf-8'), None, db.DB_RECNO, db.DB_RDONLY)
-
-            cur = cdb.cursor()
-            cdata = cur.last()
-            cur.close()
-
-            cdb.close()
-            if cdata is not None:
-                cidx, _ = cdata
-                reg = self.register.reg.get(idx)
-                res[idx] = [(1, cidx)] == reg
-                if not reg and idx > 1:
-                    res[idx - 1] = False
+            try:
+                cdb = db.DB(self.env)
+                cdb.open(name.decode('utf-8'), None,
+                         db.DB_RECNO, db.DB_RDONLY)
+            except db.DBNoSuchFileError:
+                pass
+            else:
+                cur = cdb.cursor()
+                cdata = cur.last()
+                cur.close()
+                cdb.close()
+                if cdata is not None:
+                    cidx, _ = cdata
+                    reg = self.register.reg.get(idx)
+                    res[idx] = [(1, cidx)] == reg
+                    if not reg and idx > 1:
+                        res[idx - 1] = False
 
             data = self.li_cursor.next()
 
