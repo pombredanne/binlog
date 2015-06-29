@@ -336,3 +336,32 @@ def test_Writer_cant_delete_current():
         raise
     finally:
         shutil.rmtree(tmpdir)
+
+
+@pytest.mark.parametrize("num_reads", range(1, 21))
+def test_delete_and_read(num_reads):
+    from binlog.reader import Reader
+    from binlog.writer import Writer
+    MAX_LOG_EVENTS = 10
+    try:
+        tmpdir = mktemp()
+
+        writer = Writer(tmpdir, max_log_events=MAX_LOG_EVENTS)
+        reader = Reader(tmpdir, checkpoint='test')
+
+        for x in range(25):
+            writer.append(x)
+
+        for x in range(num_reads):
+            reader.next_record()
+
+        if num_reads > MAX_LOG_EVENTS:
+            writer.delete(1)
+        else:
+            with pytest.raises(ValueError):
+                writer.delete(1)
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)
+

@@ -16,7 +16,7 @@ class Reader(Binlog):
 
         self.logindex = self.open_logindex(self.env, LOGINDEX_NAME)
         self.li_cursor = Cursor(self.logindex)
-        self.li_cursor.first()
+        fst_cl = self.li_cursor.first()
         self.last_liidx = None 
 
         self.register = None 
@@ -33,12 +33,39 @@ class Reader(Binlog):
             self.load()
 
         if self.register is None:
-            self.register = Register()
+            if fst_cl is None:
+                self.register = Register()
+            else:
+                idx, _ = fst_cl
+                self.register = Register(liidx=idx)
 
+    def is_log_available(self, pos):
+        li_idx = self.li_cursor.idx
+        data = self.li_cursor.set(pos.liidx)
+        self.li_cursor.idx = li_idx
+
+        return data is not None
+    
+    def last_available(self):
+        li_idx = self.li_cursor.idx
+        data = self.li_cursor.last()
+        if data is None:
+            idx = None
+        else:
+            idx, _ = data
+
+        self.li_cursor.idx = li_idx
+        return idx
 
     def next(self, next_log=False):
         if not self.retry:
-            pos = self.register.next(log=next_log)
+            last = self.last_available()
+            if last is not None:
+                pos = self.register.next(log=next_log)
+                while pos.liidx < last and not self.is_log_available(pos):
+                    pos = self.register.next(log=True)
+            else:
+                pos = self.register.next(log=next_log)
             try:
                 self.set_cursors(pos)
             except db.DBInvalidArgError as exc:
@@ -159,17 +186,23 @@ class Reader(Binlog):
         data = self.li_cursor.first()
         while data is not None:
             idx, name = data
-            cdb = db.DB(self.env)
-            cdb.open(name.decode('utf-8'), None, db.DB_RECNO, db.DB_RDONLY)
-
-            cur = cdb.cursor()
-            cdata = cur.last()
-            cur.close()
-
-            cdb.close()
-            if cdata is not None:
-                cidx, _ = cdata
-                res[idx] = ([(1, cidx)] == self.register.reg.get(idx))
+            try:
+                cdb = db.DB(self.env)
+                cdb.open(name.decode('utf-8'), None,
+                         db.DB_RECNO, db.DB_RDONLY)
+            except db.DBNoSuchFileError:
+                pass
+            else:
+                cur = cdb.cursor()
+                cdata = cur.last()
+                cur.close()
+                cdb.close()
+                if cdata is not None:
+                    cidx, _ = cdata
+                    reg = self.register.reg.get(idx)
+                    res[idx] = [(1, cidx)] == reg
+                    if not reg and idx > 1:
+                        res[idx - 1] = False
 
             data = self.li_cursor.next()
 
