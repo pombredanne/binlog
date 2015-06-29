@@ -102,6 +102,7 @@ class Writer(Binlog):
             dbname = os.path.join(self.path, LOG_PREFIX + '.' + str(idx))
             try:
                 self.env.dbremove(dbname, txn=txn)
+                self.logindex.delete(idx)
             except Exception as exc:
                 txn.abort()
                 raise ValueError('Cannot delete this database') from exc
