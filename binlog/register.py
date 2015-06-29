@@ -11,13 +11,14 @@ class Register:
       2: [(2, 2)],
     }
     """
-    def __init__(self, reg=None):
+    def __init__(self, reg=None, liidx=0):
         if reg is not None:
             self.reg = deepcopy(reg)
         else:
             self.reg = {}
 
-        self.liidx = self.clidx = 0
+        self.liidx = liidx
+        self.clidx = 0
 
     def add(self, record, last=None):
         if type(record) != Record:

@@ -359,3 +359,13 @@ def test_Register_next_on_populated_reg_multiple_logindex(num):
             expected.append((i, n))
 
     assert sorted(x + s) == expected
+
+#
+# Register can start on an arbitrary logindex
+#
+def test_Register_starts_arbitrary_index():
+    r = register.Register(liidx=3)
+    assert r.liidx == 3
+    rec = r.next()
+    assert rec.liidx == 3
+    assert rec.clidx == 1
