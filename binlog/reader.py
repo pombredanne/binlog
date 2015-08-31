@@ -4,13 +4,13 @@ import pickle
 from acidfile import ACIDFile
 from bsddb3 import db
 
-from .binlog import Binlog, Record
+from .binlog import TDSBinlog, CDSBinlog, Record
 from .constants import LOGINDEX_NAME, CHECKPOINT_DIR
 from .cursor import Cursor
 from .register import Register
 
 
-class Reader(Binlog):
+class Reader:
     def __init__(self, path, checkpoint=None):
         self.env = self.open_environ(path, create=False)
 
@@ -208,3 +208,11 @@ class Reader(Binlog):
 
         self.li_cursor.idx = li_idx
         return res
+
+
+class TDSReader(TDSBinlog, Reader):
+    pass
+
+
+class CDSReader(CDSBinlog, Reader):
+    pass

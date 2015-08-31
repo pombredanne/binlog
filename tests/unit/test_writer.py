@@ -8,6 +8,7 @@ import pytest
 
 from binlog import writer
 
+from conftest import RW_IMPL
 
 #
 # Writer
@@ -20,7 +21,8 @@ def test_Writer_exists():
 #
 # Writer()
 #
-def test_Writer_instantiation():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Writer_instantiation(rcls, wcls):
     """
     At the moment of instantiation the environment and the logindex
     must be created.
@@ -28,7 +30,7 @@ def test_Writer_instantiation():
     try:
         tmpdir = mktemp()
 
-        w = writer.Writer(tmpdir)
+        w = wcls(tmpdir)
         assert os.path.isdir(tmpdir)
         assert os.path.isfile(os.path.join(tmpdir, writer.LOGINDEX_NAME))
         assert isinstance(w.env, DBEnv().__class__)
@@ -47,7 +49,8 @@ def test_Writer_set_current_log():
     assert hasattr(writer.Writer, 'set_current_log')
 
 
-def test_Writer_set_current_log_on_new_environ():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Writer_set_current_log_on_new_environ(rcls, wcls):
     """
     When a new environ/logindex is created, set_current_log must create a
     new log and this new log must be registered in the logindex.
@@ -55,7 +58,7 @@ def test_Writer_set_current_log_on_new_environ():
     try:
         tmpdir = mktemp()
 
-        w = writer.Writer(tmpdir)
+        w = wcls(tmpdir)
         cl = w.set_current_log()
 
         assert os.path.isfile(os.path.join(tmpdir, writer.LOG_PREFIX + '.1'))
@@ -77,7 +80,8 @@ def test_Writer_set_current_log_on_new_environ():
         shutil.rmtree(tmpdir)
 
 
-def test_Writer_set_current_log_on_created_but_is_empty():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Writer_set_current_log_on_created_but_is_empty(rcls, wcls):
     """
     If the environ is initialized, set_current_log must return the already
     created log if it have space available.
@@ -85,12 +89,12 @@ def test_Writer_set_current_log_on_created_but_is_empty():
     try:
         tmpdir = mktemp()
 
-        w = writer.Writer(tmpdir)  # This will create the environ
+        w = wcls(tmpdir)  # This will create the environ
         cl = w.set_current_log()         # This will create the first event DB
         del cl
         del w
 
-        w = writer.Writer(tmpdir)
+        w = wcls(tmpdir)
         cl = w.set_current_log()
 
         assert os.path.isfile(os.path.join(tmpdir, writer.LOG_PREFIX + '.1'))
@@ -112,14 +116,15 @@ def test_Writer_set_current_log_on_created_but_is_empty():
         shutil.rmtree(tmpdir)
 
 
-def test_Writer_set_current_log_on_created_with_space():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Writer_set_current_log_on_created_with_space(rcls, wcls):
     """
     If there is available space in the last log this must be returned.
     """
     try:
         tmpdir = mktemp()
 
-        w = writer.Writer(tmpdir, max_log_events=10)  # This will create the environ
+        w = wcls(tmpdir, max_log_events=10)  # This will create the environ
         cl = w.set_current_log()         # This will create the first event DB
 
         for i in range(5):
@@ -128,7 +133,7 @@ def test_Writer_set_current_log_on_created_with_space():
         del cl
         del w
 
-        w = writer.Writer(tmpdir, max_log_events=10)
+        w = wcls(tmpdir, max_log_events=10)
         cl = w.set_current_log()
 
         assert os.path.isfile(os.path.join(tmpdir, writer.LOG_PREFIX + '.1'))
@@ -150,14 +155,15 @@ def test_Writer_set_current_log_on_created_with_space():
         shutil.rmtree(tmpdir)
 
 
-def test_Writer_set_current_log_on_created_but_full():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Writer_set_current_log_on_created_but_full(rcls, wcls):
     """
     If there is available space in the last log this must be returned.
     """
     try:
         tmpdir = mktemp()
 
-        w = writer.Writer(tmpdir, max_log_events=10)  # This will create
+        w = wcls(tmpdir, max_log_events=10)  # This will create
                                                       # the environ
         cl = w.set_current_log()         # This will create the first event DB
 
@@ -167,7 +173,7 @@ def test_Writer_set_current_log_on_created_but_full():
         del cl
         del w
 
-        w = writer.Writer(tmpdir, max_log_events=10)
+        w = wcls(tmpdir, max_log_events=10)
         cl = w.set_current_log()
 
         assert os.path.isfile(os.path.join(tmpdir, writer.LOG_PREFIX + '.2'))
@@ -196,7 +202,8 @@ def test_Writer_append():
     assert hasattr(writer.Writer, 'append')
 
 
-def test_Writer_append_add_data_to_set_current_log():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Writer_append_add_data_to_set_current_log(rcls, wcls):
     """
     When append() is called the data passed is pickelized and stored in
     the current log.
@@ -207,7 +214,7 @@ def test_Writer_append_add_data_to_set_current_log():
 
         expected = ["Some data", "Other data"]
 
-        w = writer.Writer(tmpdir)
+        w = wcls(tmpdir)
         w.append(expected)
 
         cl = w.set_current_log()
@@ -225,7 +232,8 @@ def test_Writer_append_add_data_to_set_current_log():
         shutil.rmtree(tmpdir)
 
 
-def test_Writer_multiple_appends_creates_multiple_log():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Writer_multiple_appends_creates_multiple_log(rcls, wcls):
     """
     When append is called multiple times, if max_log_events is reached,
     then a new log DB must be created.
@@ -234,7 +242,7 @@ def test_Writer_multiple_appends_creates_multiple_log():
     try:
         tmpdir = mktemp()
 
-        w = writer.Writer(tmpdir, max_log_events=2)
+        w = wcls(tmpdir, max_log_events=2)
         for i in range(20):
             w.append("TEST DATA")
 
@@ -260,13 +268,13 @@ def test_Writer_delete():
     assert hasattr(writer.Writer, 'delete')
 
 
-def test_Writer_delete_unused_db():
-    """The Writer.delete method can delete an unused database."""
+def test_TDSWriter_delete_unused_db():
+    """The TDSWriter.delete method can delete an unused database."""
     from binlog.constants import LOG_PREFIX
     try:
         tmpdir = mktemp()
 
-        w = writer.Writer(tmpdir, max_log_events=1)
+        w = writer.TDSWriter(tmpdir, max_log_events=1)
 
         w.append("TEST DATA")
         assert os.path.exists(os.path.join(tmpdir, LOG_PREFIX + '.1'))
@@ -285,16 +293,16 @@ def test_Writer_delete_unused_db():
         shutil.rmtree(tmpdir)
 
 
-def test_Writer_cant_delete_first_db_when_used():
+def test_TDSWriter_cant_delete_first_db_when_used():
     """
-    The Writer.delete method can't delete the first database when there
+    The TDSWriter.delete method can't delete the first database when there
     is only one database.
 
     """
     try:
         tmpdir = mktemp()
 
-        w = writer.Writer(tmpdir)
+        w = writer.TDSWriter(tmpdir)
 
         w.append("TEST DATA")
         w.set_current_log().sync()
@@ -316,7 +324,7 @@ def test_Writer_cant_delete_current():
     try:
         tmpdir = mktemp()
 
-        w = writer.Writer(tmpdir, max_log_events=2)
+        w = writer.TDSWriter(tmpdir, max_log_events=2)
 
         for i in range(1, 11): 
             w.append("TEST DATA")
@@ -340,14 +348,14 @@ def test_Writer_cant_delete_current():
 
 @pytest.mark.parametrize("num_reads", range(1, 21))
 def test_delete_and_read(num_reads):
-    from binlog.reader import Reader
-    from binlog.writer import Writer
+    from binlog.reader import TDSReader
+    from binlog.writer import TDSWriter
     MAX_LOG_EVENTS = 10
     try:
         tmpdir = mktemp()
 
-        writer = Writer(tmpdir, max_log_events=MAX_LOG_EVENTS)
-        reader = Reader(tmpdir, checkpoint='test')
+        writer = TDSWriter(tmpdir, max_log_events=MAX_LOG_EVENTS)
+        reader = TDSReader(tmpdir, checkpoint='test')
 
         for x in range(25):
             writer.append(x)
@@ -360,8 +368,31 @@ def test_delete_and_read(num_reads):
         else:
             with pytest.raises(ValueError):
                 writer.delete(1)
+            pass
     except:
         raise
     finally:
         shutil.rmtree(tmpdir)
 
+
+def test_CDSWriter_delete_cant_delete():
+    from binlog.writer import CDSWriter
+    from binlog.constants import LOG_PREFIX
+    try:
+        tmpdir = mktemp()
+
+        w = writer.CDSWriter(tmpdir, max_log_events=1)
+
+        w.append("TEST DATA")
+        assert os.path.exists(os.path.join(tmpdir, LOG_PREFIX + '.1'))
+
+        w.append("TEST DATA")
+        assert os.path.exists(os.path.join(tmpdir, LOG_PREFIX + '.2'))
+
+        with pytest.raises(RuntimeError):
+            w.delete(1)
+        
+    except:
+        raise
+    finally:
+        shutil.rmtree(tmpdir)

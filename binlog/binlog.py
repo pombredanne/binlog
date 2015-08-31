@@ -7,8 +7,11 @@ Record = namedtuple('Record', ['liidx', 'clidx', 'value'])
 
 
 class Binlog:
-    @staticmethod
-    def open_environ(path, create=True):
+
+    flags = None
+
+    @classmethod
+    def open_environ(cls, path, create=True):
         """Open or create the db environment."""
         if not os.path.isdir(path):
             if os.path.exists(path):
@@ -21,14 +24,10 @@ class Binlog:
 
         env = db.DBEnv()
 
-        flags = 0;
-        flags |= db.DB_CREATE
-        flags |= db.DB_INIT_MPOOL
-        flags |= db.DB_INIT_LOCK
-        flags |= db.DB_INIT_LOG
-        flags |= db.DB_INIT_TXN
+        if cls.flags is None:
+            raise NotImplementedError("`flags` attribute must be setted.")
 
-        env.open(path, flags)
+        env.open(path, cls.flags)
 
         return env
 
@@ -46,3 +45,26 @@ class Binlog:
                 raise
 
         return logindex
+
+
+class TDSBinlog(Binlog):
+    """
+    Binlog with Transactional Data Store backend.
+
+    This backend support only one concurrent writer and multiple readers.
+
+    THIS IS UNSAFE WITH MULTIPLE READERS!
+
+    """
+    flags = db.DB_CREATE | db.DB_INIT_MPOOL | db.DB_INIT_LOCK | db.DB_INIT_TXN
+
+
+class CDSBinlog(Binlog):
+    """
+    Binlog with Concurrent Data Store backend.
+
+    You can use this backend with multiple writers, but only one can
+    write at a time. The locking is managed by the database.
+
+    """
+    flags = db.DB_CREATE | db.DB_INIT_MPOOL | db.DB_INIT_CDB

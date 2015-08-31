@@ -5,20 +5,20 @@ import pytest
 
 
 def test_reader_starts_with_the_lowest_database_available():
-    from binlog.reader import Reader
-    from binlog.writer import Writer
+    from binlog.reader import TDSReader
+    from binlog.writer import TDSWriter
 
     try:
         tmpdir = mktemp()
 
-        writer = Writer(tmpdir, max_log_events=10)
+        writer = TDSWriter(tmpdir, max_log_events=10)
 
         for x in range(25):
             writer.append(x)
 
         writer.delete(1)
 
-        reader = Reader(tmpdir, checkpoint='test')
+        reader = TDSReader(tmpdir, checkpoint='test')
         for x in range(10, 25):
             rec = reader.next_record()
             print(rec)
@@ -31,14 +31,14 @@ def test_reader_starts_with_the_lowest_database_available():
 
 
 def test_reader_starts_with_the_lowest_database_available_instantiate_before_delete():
-    from binlog.reader import Reader
-    from binlog.writer import Writer
+    from binlog.reader import TDSReader
+    from binlog.writer import TDSWriter
 
     try:
         tmpdir = mktemp()
 
-        writer = Writer(tmpdir, max_log_events=10)
-        reader = Reader(tmpdir, checkpoint='test')
+        writer = TDSWriter(tmpdir, max_log_events=10)
+        reader = TDSReader(tmpdir, checkpoint='test')
 
         for x in range(25):
             writer.append(x)
