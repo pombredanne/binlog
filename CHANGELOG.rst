@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+0.0.4
+-----
+
+- New backend using Berkeley's Concurrent Data Storage (CDS).
+- Specialized Reader and Writer for each backend (TDS or CDS).
+
+
 0.0.3
 -----
 

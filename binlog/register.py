@@ -6,6 +6,9 @@ from .binlog import Record
 
 class Register:
     """
+    The register logs the reader acknowledgements.
+
+    
     reg = {
       1: [(1, 20), (30, 30)],
       2: [(2, 2)],
@@ -21,6 +24,15 @@ class Register:
         self.clidx = 0
 
     def add(self, record, last=None):
+        """
+        This add a new ack to the list.
+
+        chapa chapa chapa
+
+        :param record: The record to ack to.
+        :para last: .....
+
+        """
         if type(record) != Record:
             raise ValueError('`record` must be a Record instance.')
 

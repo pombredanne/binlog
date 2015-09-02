@@ -9,6 +9,7 @@ import pytest
 from binlog import reader, writer
 from binlog.binlog import Record
 
+from conftest import RW_IMPL
 
 #
 # Reader
@@ -26,7 +27,8 @@ def test_Reader_next():
     assert hasattr(reader.Reader, 'next')
 
 
-def test_Reader_next_only_one_db():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Reader_next_only_one_db(rcls, wcls):
     """
     Reader.next must return all entries in the log.
     """
@@ -34,13 +36,13 @@ def test_Reader_next_only_one_db():
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir, max_log_events=100)
+        w = wcls(tmpdir, max_log_events=100)
         for i in range(10):
             w.append(i)
         w.set_current_log().sync()
 
         # Read 10 entries
-        r = reader.Reader(tmpdir)
+        r = rcls(tmpdir)
         for i in range(10):
             data = r.next()
             assert i == data
@@ -53,7 +55,8 @@ def test_Reader_next_only_one_db():
         shutil.rmtree(tmpdir)
 
 
-def test_Reader_next_multiple_db():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Reader_next_multiple_db(rcls, wcls):
     """
     Reader.next must return all entries in the log.
     """
@@ -61,13 +64,13 @@ def test_Reader_next_multiple_db():
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir, max_log_events=2)
+        w = wcls(tmpdir, max_log_events=2)
         for i in range(10):
             w.append(i)
         w.set_current_log().sync()
 
         # Read 10 entries
-        r = reader.Reader(tmpdir)
+        r = rcls(tmpdir)
         for i in range(10):
             data = r.next()
             assert i == data
@@ -80,7 +83,8 @@ def test_Reader_next_multiple_db():
         shutil.rmtree(tmpdir)
 
 
-def test_Reader_next_only_one_db_with_writings():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Reader_next_only_one_db_with_writings(rcls, wcls):
     """
     Reader.next must return all entries in the log even if the entries
     are added after the reader reach the last entry.
@@ -89,13 +93,13 @@ def test_Reader_next_only_one_db_with_writings():
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir, max_log_events=100)
+        w = wcls(tmpdir, max_log_events=100)
         for i in range(10):
             w.append(i)
         w.set_current_log().sync()
 
         # Read 10 entries
-        r = reader.Reader(tmpdir)
+        r = rcls(tmpdir)
         for i in range(10):
             data = r.next()
             assert i == data
@@ -118,8 +122,9 @@ def test_Reader_next_only_one_db_with_writings():
         shutil.rmtree(tmpdir)
 
 
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
 @pytest.mark.parametrize("max_log_events", range(9, 21))
-def test_Reader_next_only_multiple_dbs_with_writings(max_log_events):
+def test_Reader_next_only_multiple_dbs_with_writings(rcls, wcls, max_log_events):
     """
     Reader.next must return all entries in the log even if the entries
     are added after the reader reach the last entry.
@@ -128,13 +133,13 @@ def test_Reader_next_only_multiple_dbs_with_writings(max_log_events):
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir, max_log_events=max_log_events)
+        w = wcls(tmpdir, max_log_events=max_log_events)
         for i in range(10):
             w.append(i)
         w.set_current_log().sync()
 
         # Read 10 entries
-        r = reader.Reader(tmpdir)
+        r = rcls(tmpdir)
         for i in range(10):
             data = r.next()
             assert i == data
@@ -157,7 +162,8 @@ def test_Reader_next_only_multiple_dbs_with_writings(max_log_events):
         shutil.rmtree(tmpdir)
 
 
-def test_Reader_new_Reader_starts_over():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Reader_new_Reader_starts_over(rcls, wcls):
     """
     A new instance of Reader must start the reading from the begining.
     """
@@ -165,13 +171,13 @@ def test_Reader_new_Reader_starts_over():
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir, max_log_events=100)
+        w = wcls(tmpdir, max_log_events=100)
         for i in range(10):
             w.append(i)
         w.set_current_log().sync()
 
         # Read 10 entries
-        r = reader.Reader(tmpdir)
+        r = rcls(tmpdir)
         for i in range(10):
             data = r.next()
             assert i == data
@@ -179,7 +185,7 @@ def test_Reader_new_Reader_starts_over():
         assert r.next() is None
 
         # Read 10 entries
-        r = reader.Reader(tmpdir)
+        r = rcls(tmpdir)
         for i in range(10):
             data = r.next()
             assert i == data
@@ -199,17 +205,18 @@ def test_Reader_save():
     assert hasattr(reader.Reader, 'save')
 
 
-def test_Reader_save_raises_if_no_checkpoint_defined():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Reader_save_raises_if_no_checkpoint_defined(rcls, wcls):
     try:
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir)
+        w = wcls(tmpdir)
         for i in range(10):
             w.append(i)
         w.set_current_log().sync()
 
-        r = reader.Reader(tmpdir)
+        r = rcls(tmpdir)
         with pytest.raises(ValueError):
             r.save()
     except:
@@ -218,8 +225,9 @@ def test_Reader_save_raises_if_no_checkpoint_defined():
         shutil.rmtree(tmpdir)
 
 
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
 @pytest.mark.parametrize("max_log_events", range(1, 10))
-def test_Reader_can_save_and_restore_its_process(max_log_events):
+def test_Reader_can_save_and_restore_its_process(rcls, wcls, max_log_events):
     """
     If the method checkpoint is called then a new instance must start
     with the first non-aknowledge item.
@@ -229,13 +237,13 @@ def test_Reader_can_save_and_restore_its_process(max_log_events):
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir, max_log_events=max_log_events)
+        w = wcls(tmpdir, max_log_events=max_log_events)
         for i in range(10):
             w.append(i)
         w.set_current_log().sync()
 
         # Read first 5 entries
-        r = reader.Reader(tmpdir, checkpoint='reader1')
+        r = rcls(tmpdir, checkpoint='reader1')
         for i in range(5):
             data = r.next_record()
             r.ack(data)
@@ -243,7 +251,7 @@ def test_Reader_can_save_and_restore_its_process(max_log_events):
         r.save()  # Make a checkpoint
 
         # Read last 5 entries
-        r = reader.Reader(tmpdir, checkpoint='reader1')
+        r = rcls(tmpdir, checkpoint='reader1')
         for i in range(5, 10):
             data = r.next_record()
             assert i == data.value
@@ -255,8 +263,9 @@ def test_Reader_can_save_and_restore_its_process(max_log_events):
         shutil.rmtree(tmpdir)
 
 
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
 @pytest.mark.parametrize("max_log_events", range(1, 10))
-def test_Reader_can_save_and_restore_its_process_multiple_save(max_log_events):
+def test_Reader_can_save_and_restore_its_process_multiple_save(rcls, wcls, max_log_events):
     """
     If the method checkpoint is called then a new instance must start
     with the first non-aknowledge item.
@@ -266,13 +275,13 @@ def test_Reader_can_save_and_restore_its_process_multiple_save(max_log_events):
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir, max_log_events=max_log_events)
+        w = wcls(tmpdir, max_log_events=max_log_events)
         for i in range(10):
             w.append(i)
         w.set_current_log().sync()
 
         # Read first 5 entries
-        r = reader.Reader(tmpdir, checkpoint='reader1')
+        r = rcls(tmpdir, checkpoint='reader1')
         for i in range(5):
             data = r.next_record()
             r.ack(data)
@@ -280,7 +289,7 @@ def test_Reader_can_save_and_restore_its_process_multiple_save(max_log_events):
             r.save()  # Make a checkpoint
 
         # Read last 5 entries
-        r = reader.Reader(tmpdir, checkpoint='reader1')
+        r = rcls(tmpdir, checkpoint='reader1')
         for i in range(5, 10):
             data = r.next_record()
             assert i == data.value
@@ -292,8 +301,9 @@ def test_Reader_can_save_and_restore_its_process_multiple_save(max_log_events):
         shutil.rmtree(tmpdir)
 
 
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
 @pytest.mark.parametrize("max_log_events", range(1, 10))
-def test_Reader_can_save_and_restore_its_process_non_lineal(max_log_events):
+def test_Reader_can_save_and_restore_its_process_non_lineal(rcls, wcls, max_log_events):
     """
     If the method checkpoint is called then a new instance must start
     with the first non-aknowledge item. Even if there are gaps in the
@@ -303,13 +313,13 @@ def test_Reader_can_save_and_restore_its_process_non_lineal(max_log_events):
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir, max_log_events=max_log_events)
+        w = wcls(tmpdir, max_log_events=max_log_events)
         for i in range(100):
             w.append(i)
         w.set_current_log().sync()
 
         # Read first 5 entries
-        r = reader.Reader(tmpdir, checkpoint='reader1')
+        r = rcls(tmpdir, checkpoint='reader1')
         for i in range(100):
             data = r.next_record()
             if i % 2 == 0:
@@ -317,7 +327,7 @@ def test_Reader_can_save_and_restore_its_process_non_lineal(max_log_events):
         r.save()  # Make a checkpoint
 
         # Read last 5 entries
-        r = reader.Reader(tmpdir, checkpoint='reader1')
+        r = rcls(tmpdir, checkpoint='reader1')
         for i in range(50):
             data = r.next_record()
             assert data.value % 2 != 0
@@ -336,17 +346,18 @@ def test_Reader_load():
     assert hasattr(reader.Reader, 'load')
 
 
-def test_Reader_load_raises_if_no_checkpoint():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Reader_load_raises_if_no_checkpoint(rcls, wcls):
     try:
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir)
+        w = wcls(tmpdir)
         for i in range(10):
             w.append(i)
         w.set_current_log().sync()
 
-        r = reader.Reader(tmpdir)
+        r = rcls(tmpdir)
         with pytest.raises(ValueError):
             r.load()
     except:
@@ -363,8 +374,9 @@ def test_Reader_next_record():
     assert hasattr(reader.Reader, 'next_record')
 
 
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
 @pytest.mark.parametrize("max_log_events", range(1, 10))
-def test_Reader_next_record(max_log_events):
+def test_Reader_next_record(rcls, wcls, max_log_events):
     """
     The next_record method retrieve the next register and return a Record
     object.
@@ -373,13 +385,13 @@ def test_Reader_next_record(max_log_events):
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir, max_log_events=max_log_events)
+        w = wcls(tmpdir, max_log_events=max_log_events)
         for i in range(10):
             w.append(i)
         w.set_current_log().sync()
 
         # Read first 5 entries
-        r = reader.Reader(tmpdir)
+        r = rcls(tmpdir)
         for i in range(10):
             data = r.next_record().value
             assert i == data
@@ -394,13 +406,14 @@ def test_Reader_next_record(max_log_events):
 #
 # Reader().ack
 #
-def test_Reader_ack():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Reader_ack(rcls, wcls):
     """The Reader has the ack method."""
     try:
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir)
+        w = wcls(tmpdir)
         for i in range(10):
             w.append(i)
         w.set_current_log().sync()
@@ -412,26 +425,28 @@ def test_Reader_ack():
         shutil.rmtree(tmpdir)
 
 
-def test_Reader_register():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Reader_register(rcls, wcls):
     """The Reader() has the register attribute."""
     try:
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir)
+        w = wcls(tmpdir)
         for i in range(10):
             w.append(i)
         w.set_current_log().sync()
 
-        assert hasattr(reader.Reader(tmpdir), 'register')
+        assert hasattr(rcls(tmpdir), 'register')
     except:
         raise
     finally:
         shutil.rmtree(tmpdir)
 
 
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
 @pytest.mark.parametrize("max_log_events", range(1, 10))
-def test_Reader_ack_adds_to_register(max_log_events):
+def test_Reader_ack_adds_to_register(rcls, wcls, max_log_events):
     """
     When some data retrieved from the next_record method is passed to
     the ack method, the Reader must add this to its register.
@@ -440,13 +455,13 @@ def test_Reader_ack_adds_to_register(max_log_events):
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir, max_log_events=max_log_events)
+        w = wcls(tmpdir, max_log_events=max_log_events)
         for i in range(10):
             w.append(i)
         w.set_current_log().sync()
 
         # Read first 5 entries
-        r = reader.Reader(tmpdir)
+        r = rcls(tmpdir)
         for i in range(10):
             data = r.next_record()
             assert data not in r.register
@@ -468,18 +483,19 @@ def test_Reader_has_next_log():
     assert hasattr(reader.Reader, 'has_next_log')
 
 
-def test_Reader_has_next_log_one_log():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Reader_has_next_log_one_log(rcls, wcls):
     """When there is no next log `has_next_log` must return `False`."""
     try:
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir)
+        w = wcls(tmpdir)
         w.append('DATA')
         w.set_current_log().sync()
 
         # Read first 5 entries
-        r = reader.Reader(tmpdir)
+        r = rcls(tmpdir)
         r.next_record()
 
         assert not r.has_next_log()
@@ -489,17 +505,18 @@ def test_Reader_has_next_log_one_log():
         shutil.rmtree(tmpdir)
 
 
-def test_Reader_has_next_log_two_logs():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Reader_has_next_log_two_logs(rcls, wcls):
     """When there is next log `has_next_log` must return `True`."""
     try:
         tmpdir = mktemp()
 
-        w = writer.Writer(tmpdir, max_log_events=1)
+        w = wcls(tmpdir, max_log_events=1)
         w.append('DATA')
         w.append('DATA')
         w.set_current_log().sync()
 
-        r = reader.Reader(tmpdir)
+        r = rcls(tmpdir)
         r.next_record()
 
         assert r.has_next_log()
@@ -516,7 +533,8 @@ def test_Reader_set_cursors():
     assert hasattr(reader.Reader, 'set_cursors')
 
 
-def test_Reader_set_cursors_from_record():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Reader_set_cursors_from_record(rcls, wcls):
     """
     When set_cursors is called with a Record object li_cursor and
     cl_cursor must be pointing to the `liidx` and `clidx` attributesof
@@ -525,12 +543,12 @@ def test_Reader_set_cursors_from_record():
     try:
         tmpdir = mktemp()
 
-        w = writer.Writer(tmpdir, max_log_events=1)
+        w = wcls(tmpdir, max_log_events=1)
         w.append('DATA1')
         w.append('DATA2')
         w.set_current_log().sync()
 
-        r = reader.Reader(tmpdir)
+        r = rcls(tmpdir)
 
         r.set_cursors(Record(liidx=1, clidx=1, value=None))
         assert r.cl_cursor.current() == (1, pickle.dumps('DATA1'))
@@ -554,13 +572,14 @@ def test_Reader_status():
     assert hasattr(reader.Reader, 'status')
 
 
-def test_Reader_status_return_dict():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_Reader_status_return_dict(rcls, wcls):
     """The method Reader.status returns a dictionary."""
     try:
         tmpdir = mktemp()
 
-        w = writer.Writer(tmpdir, max_log_events=1)
-        r = reader.Reader(tmpdir)
+        w = wcls(tmpdir, max_log_events=1)
+        r = rcls(tmpdir)
         assert type(r.status()) == dict
     except:
         raise
@@ -568,8 +587,9 @@ def test_Reader_status_return_dict():
         shutil.rmtree(tmpdir)
 
 
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
 @given(num=st.integers(min_value=1, max_value=100))
-def test_Reader_status_return_dict_with_status(num):
+def test_Reader_status_return_dict_with_status(rcls, wcls, num):
     """
     The method Reader.status returns a dictionary with the indexes and
     the status of each index.
@@ -577,8 +597,8 @@ def test_Reader_status_return_dict_with_status(num):
     try:
         tmpdir = mktemp()
 
-        w = writer.Writer(tmpdir, max_log_events=10)
-        r = reader.Reader(tmpdir)
+        w = wcls(tmpdir, max_log_events=10)
+        r = rcls(tmpdir)
 
         for i in range(num):
             w.append(i)
@@ -599,17 +619,19 @@ def test_Reader_status_return_dict_with_status(num):
 #
 # No database exceptions
 #
-def test_no_environment():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_no_environment(rcls, wcls):
     tmpdir = mktemp()
     with pytest.raises(ValueError):
-        reader.Reader(tmpdir)
+        rcls(tmpdir)
 
 
-def test_environment_but_no_databases():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_environment_but_no_databases(rcls, wcls):
     try:
         tmpdir = mktemp()
-        w = writer.Writer(tmpdir)
-        r = reader.Reader(tmpdir)
+        w = wcls(tmpdir)
+        r = rcls(tmpdir)
         assert r.next_record() is None
     except:
         raise
@@ -617,11 +639,12 @@ def test_environment_but_no_databases():
         shutil.rmtree(tmpdir)
 
 
-def test_environment_but_no_databases_and_after_read_is_fine():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_environment_but_no_databases_and_after_read_is_fine(rcls, wcls):
     try:
         tmpdir = mktemp()
-        w = writer.Writer(tmpdir)
-        r = reader.Reader(tmpdir)
+        w = wcls(tmpdir)
+        r = rcls(tmpdir)
         assert r.next_record() is None
 
         w.append('TEST')
@@ -634,11 +657,12 @@ def test_environment_but_no_databases_and_after_read_is_fine():
         shutil.rmtree(tmpdir)
 
 
-def test_environment_but_no_databases_and_after_read_is_fine_multiple_retry():
+@pytest.mark.parametrize("rcls,wcls", RW_IMPL)
+def test_environment_but_no_databases_and_after_read_is_fine_multiple_retry(rcls, wcls):
     try:
         tmpdir = mktemp()
-        w = writer.Writer(tmpdir)
-        r = reader.Reader(tmpdir)
+        w = wcls(tmpdir)
+        r = rcls(tmpdir)
 
         for i in range(10):
             assert r.next_record() is None

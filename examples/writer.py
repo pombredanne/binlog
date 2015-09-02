@@ -1,8 +1,8 @@
-from binlog.writer import Writer
+from binlog.writer import TDSWriter
 
 from random import randint
 
-w = Writer('test')
+w = TDSWriter('test')
 
 while True:
     w.append("Hello World!")

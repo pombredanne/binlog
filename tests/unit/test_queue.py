@@ -31,7 +31,7 @@ def test_Queue_get_nowait_on_writed_queue():
         tmpdir = mktemp()
 
         # Write 10 entries
-        w = writer.Writer(tmpdir)
+        w = writer.TDSWriter(tmpdir)
         for i in range(10):
             w.append(i)
         w.set_current_log().sync()
@@ -81,7 +81,7 @@ def test_Queue_get_waits_until_data():
         tmpdir = mktemp()
 
         def insert_thread():
-            w = writer.Writer(tmpdir)
+            w = writer.TDSWriter(tmpdir)
             for i in range(10):
                 w.append(i)
                 sleep(0.1)
@@ -132,7 +132,7 @@ def test_Queue_put_on_new_queue():
         for i in range(10):
             q.put(i)
 
-        r = reader.Reader(tmpdir)
+        r = reader.TDSReader(tmpdir)
         for i in range(10):
             assert r.next_record().value == i
 

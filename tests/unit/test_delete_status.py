@@ -9,13 +9,13 @@ MAX_LOG_EVENTS = 10
 @pytest.mark.parametrize("reads", range(1, MAX_LOG_EVENTS * 2 + 2))
 def test_status_and_delete_match(reads):
     """reader.status is consistent with writer.delete."""
-    from binlog.reader import Reader
-    from binlog.writer import Writer
+    from binlog.reader import TDSReader
+    from binlog.writer import TDSWriter
     try:
         tmpdir = mktemp()
 
-        writer = Writer(tmpdir, max_log_events=MAX_LOG_EVENTS)
-        reader = Reader(tmpdir, checkpoint='test')
+        writer = TDSWriter(tmpdir, max_log_events=MAX_LOG_EVENTS)
+        reader = TDSReader(tmpdir, checkpoint='test')
 
         for x in range(25):
             writer.append(x)
@@ -43,14 +43,14 @@ def test_status_and_delete_match(reads):
 
 
 def test_status_method_works_after_deletion():
-    from binlog.reader import Reader
-    from binlog.writer import Writer
+    from binlog.reader import TDSReader
+    from binlog.writer import TDSWriter
 
     try:
         tmpdir = mktemp()
 
-        writer = Writer(tmpdir, max_log_events=10)
-        reader = Reader(tmpdir, checkpoint='test')
+        writer = TDSWriter(tmpdir, max_log_events=10)
+        reader = TDSReader(tmpdir, checkpoint='test')
 
         for x in range(25):
             writer.append(x)

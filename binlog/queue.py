@@ -4,10 +4,17 @@ import time
 from bsddb3 import db
 
 from .constants import MAX_LOG_EVENTS
+from .reader import TDSReader
+from .writer import TDSWriter
 
 
 class Queue:
-    def __init__(self, path, max_log_events=MAX_LOG_EVENTS, autocommit=False):
+    def __init__(self, path, max_log_events=MAX_LOG_EVENTS, autocommit=False,
+                 readercls=TDSReader, writercls=TDSWriter):
+
+        self.readercls=readercls
+        self.writercls=writercls
+
         self.path = path
         self.max_log_events = max_log_events
         self.autocommit = autocommit
@@ -18,16 +25,14 @@ class Queue:
     @property
     def _reader(self):
         if self.__reader is None:
-            from binlog.reader import Reader
-            self.__reader = Reader(self.path)
+            self.__reader = self.readercls(self.path)
         return self.__reader
 
     @property
     def _writer(self):
         if self.__writer is None:
-            from binlog.writer import Writer
-            self.__writer = Writer(self.path,
-                                   max_log_events=self.max_log_events)
+            self.__writer = self.writercls(self.path,
+                                           max_log_events=self.max_log_events)
         return self.__writer
 
     def _get(self):

@@ -4,9 +4,9 @@ import os
 import signal
 import time
 
-from binlog.reader import Reader
+from binlog.reader import TDSReader
 
-r = Reader('test', checkpoint='status')
+r = TDSReader('test', checkpoint='status')
 
 def save_status():
     """

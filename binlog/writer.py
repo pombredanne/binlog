@@ -3,11 +3,11 @@ import pickle
 
 from bsddb3 import db
 
-from .binlog import Binlog
+from .binlog import TDSBinlog, CDSBinlog
 from .constants import *
 
 
-class Writer(Binlog):
+class Writer:
     def __init__(self, path, max_log_events=MAX_LOG_EVENTS):
         self.path = path
         self.env = self.open_environ(path)
@@ -84,6 +84,9 @@ class Writer(Binlog):
 
         self.next_will_create_log = (idx >= self.max_log_events)
 
+    def _delete(self, idx):
+        raise NotImplementedError("Must be implemented in subclass.")
+
     def delete(self, idx):
         """Delete a log DB."""
         cursor = self.logindex.cursor()
@@ -98,16 +101,26 @@ class Writer(Binlog):
         except:
             raise
         else:
-            txn = self.env.txn_begin(flags=db.DB_TXN_NOWAIT)
-            dbname = os.path.join(self.path, LOG_PREFIX + '.' + str(idx))
-            try:
-                self.env.dbremove(dbname, txn=txn)
-                self.logindex.delete(idx)
-            except Exception as exc:
-                txn.abort()
-                raise ValueError('Cannot delete this database') from exc
-            else:
-                txn.commit()
+            self._delete(idx)
         finally:
             cursor.close()
 
+
+class TDSWriter(TDSBinlog, Writer):
+    def _delete(self, idx):
+        """Delete the log DB using a transaction."""
+        txn = self.env.txn_begin(flags=db.DB_TXN_NOWAIT)
+        dbname = os.path.join(self.path, LOG_PREFIX + '.' + str(idx))
+        try:
+            self.env.dbremove(dbname, txn=txn)
+            self.logindex.delete(idx)
+        except Exception as exc:
+            txn.abort()
+            raise ValueError('Cannot delete this database') from exc
+        else:
+            txn.commit()
+
+
+class CDSWriter(CDSBinlog, Writer):
+    def _delete(self, idx):
+        raise RuntimeError("CDSWriter can't delete databases safely.")
