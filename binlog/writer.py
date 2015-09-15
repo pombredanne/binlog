@@ -124,3 +124,5 @@ class TDSWriter(TDSBinlog, Writer):
 class CDSWriter(CDSBinlog, Writer):
     def _delete(self, idx):
         raise RuntimeError("CDSWriter can't delete databases safely.")
+
+Writer = CDSWriter

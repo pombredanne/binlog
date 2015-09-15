@@ -216,3 +216,5 @@ class TDSReader(TDSBinlog, Reader):
 
 class CDSReader(CDSBinlog, Reader):
     pass
+
+Reader = CDSReader
