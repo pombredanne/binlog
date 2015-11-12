@@ -80,7 +80,7 @@ class Writer:
         if self._current_log is None:
             self.set_current_log()
 
-        idx = self._current_log.append(pickle.dumps(data))
+        idx = self._current_log.append(data)
 
         self.next_will_create_log = (idx >= self.max_log_events)
 

@@ -109,7 +109,7 @@ class Reader:
                 return None
         else:
             _, value = data
-            return pickle.loads(value)
+            return value
 
 
     def next_record(self):
