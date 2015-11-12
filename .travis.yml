@@ -1,6 +1,8 @@
-before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -y libdb5.1-dev
+sudo: false
+addons:
+  apt:
+    packages: 
+    - libdb5.1-dev
 language: python
 python: 3.4
 env:
