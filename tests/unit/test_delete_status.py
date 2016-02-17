@@ -18,7 +18,7 @@ def test_status_and_delete_match(reads):
         reader = TDSReader(tmpdir, checkpoint='test')
 
         for x in range(25):
-            writer.append(x)
+            writer.append(str(x).encode("ascii"))
 
         for x in range(reads):
             rec = reader.next_record()
@@ -53,7 +53,7 @@ def test_status_method_works_after_deletion():
         reader = TDSReader(tmpdir, checkpoint='test')
 
         for x in range(25):
-            writer.append(x)
+            writer.append(str(x).encode("ascii"))
 
         reader.status()
         writer.delete(1)

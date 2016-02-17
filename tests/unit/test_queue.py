@@ -33,12 +33,12 @@ def test_Queue_get_nowait_on_writed_queue():
         # Write 10 entries
         w = writer.TDSWriter(tmpdir)
         for i in range(10):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         q = queue.Queue(tmpdir)
         for i in range(10):
-            assert q.get_nowait().value == i
+            assert int(q.get_nowait().value) == i
 
         with pytest.raises(queue.Empty):
             assert q.get_nowait()
@@ -83,7 +83,7 @@ def test_Queue_get_waits_until_data():
         def insert_thread():
             w = writer.TDSWriter(tmpdir)
             for i in range(10):
-                w.append(i)
+                w.append(str(i).encode("ascii"))
                 sleep(0.1)
                 w.set_current_log().sync()
 
@@ -93,7 +93,7 @@ def test_Queue_get_waits_until_data():
 
         q = queue.Queue(tmpdir)
         for i in range(10):
-            assert q.get().value == i
+            assert int(q.get().value) == i
 
         t.join()
     except:
@@ -130,11 +130,11 @@ def test_Queue_put_on_new_queue():
         tmpdir = mktemp()
         q = queue.Queue(tmpdir)
         for i in range(10):
-            q.put(i)
+            q.put(str(i).encode("ascii"))
 
         r = reader.TDSReader(tmpdir)
         for i in range(10):
-            assert r.next_record().value == i
+            assert int(r.next_record().value) == i
 
         assert r.next_record() is None
 
@@ -149,8 +149,8 @@ def test_Queue_put_and_get():
         tmpdir = mktemp()
         q = queue.Queue(tmpdir)
         for i in range(10):
-            q.put(i)
-            assert q.get().value == i
+            q.put(str(i).encode("ascii"))
+            assert int(q.get().value) == i
 
     except:
         raise

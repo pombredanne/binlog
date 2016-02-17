@@ -208,11 +208,10 @@ def test_Writer_append_add_data_to_set_current_log(rcls, wcls):
     When append() is called the data passed is pickelized and stored in
     the current log.
     """
-    import pickle
     try:
         tmpdir = mktemp()
 
-        expected = ["Some data", "Other data"]
+        expected = b'["Some data", "Other data"]'
 
         w = wcls(tmpdir)
         w.append(expected)
@@ -222,9 +221,7 @@ def test_Writer_append_add_data_to_set_current_log(rcls, wcls):
         idx, data = cursor.first()
         cursor.close()
 
-        actual = pickle.loads(data)
-
-        assert expected == actual
+        assert expected == data
 
     except:
         raise
@@ -238,13 +235,12 @@ def test_Writer_multiple_appends_creates_multiple_log(rcls, wcls):
     When append is called multiple times, if max_log_events is reached,
     then a new log DB must be created.
     """
-    import pickle
     try:
         tmpdir = mktemp()
 
         w = wcls(tmpdir, max_log_events=2)
         for i in range(20):
-            w.append("TEST DATA")
+            w.append(b"TEST DATA")
 
         cursor = w.logindex.cursor()
 
@@ -276,10 +272,10 @@ def test_TDSWriter_delete_unused_db():
 
         w = writer.TDSWriter(tmpdir, max_log_events=1)
 
-        w.append("TEST DATA")
+        w.append(b"TEST DATA")
         assert os.path.exists(os.path.join(tmpdir, LOG_PREFIX + '.1'))
 
-        w.append("TEST DATA")
+        w.append(b"TEST DATA")
         assert os.path.exists(os.path.join(tmpdir, LOG_PREFIX + '.2'))
 
         w.delete(1)
@@ -304,7 +300,7 @@ def test_TDSWriter_cant_delete_first_db_when_used():
 
         w = writer.TDSWriter(tmpdir)
 
-        w.append("TEST DATA")
+        w.append(b"TEST DATA")
         w.set_current_log().sync()
 
         with pytest.raises(ValueError):
@@ -327,13 +323,13 @@ def test_Writer_cant_delete_current():
         w = writer.TDSWriter(tmpdir, max_log_events=2)
 
         for i in range(1, 11): 
-            w.append("TEST DATA")
+            w.append(b"TEST DATA")
             w.set_current_log().sync()
 
             with pytest.raises(ValueError):
                 w.delete(i)
 
-            w.append("TEST DATA")
+            w.append(b"TEST DATA")
             w.set_current_log().sync()
 
             if i > 1:
@@ -358,7 +354,7 @@ def test_delete_and_read(num_reads):
         reader = TDSReader(tmpdir, checkpoint='test')
 
         for x in range(25):
-            writer.append(x)
+            writer.append(str(x).encode("ascii"))
 
         for x in range(num_reads):
             reader.next_record()
@@ -383,10 +379,10 @@ def test_CDSWriter_delete_cant_delete():
 
         w = writer.CDSWriter(tmpdir, max_log_events=1)
 
-        w.append("TEST DATA")
+        w.append(b"TEST DATA")
         assert os.path.exists(os.path.join(tmpdir, LOG_PREFIX + '.1'))
 
-        w.append("TEST DATA")
+        w.append(b"TEST DATA")
         assert os.path.exists(os.path.join(tmpdir, LOG_PREFIX + '.2'))
 
         with pytest.raises(RuntimeError):
