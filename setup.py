@@ -28,4 +28,7 @@ setup(name='binlog',
       install_requires=[
           'bsddb3==6.1.0',
           'acidfile==1.2.1'
-      ])
+      ],
+      entry_points={
+          'console_scripts': ['binlog=binlog.__main__:main']
+      })
