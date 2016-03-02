@@ -1,6 +1,7 @@
 from io import BytesIO
 import os
 import asyncio
+import signal
 
 from .writer import TDSWriter
 
@@ -45,10 +46,11 @@ class Server:
             loop.create_unix_server(self.get_protocol(),
                                     self.uds_path))
 
+        loop.add_signal_handler(signal.SIGINT, loop.stop)
+        loop.add_signal_handler(signal.SIGTERM, loop.stop)
+
         try:
             loop.run_forever()
-        except KeyboardInterrupt:
-            pass
         finally:
             # Close the server
             try:
