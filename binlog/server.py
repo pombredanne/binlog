@@ -44,10 +44,19 @@ class Server:
 
         server = loop.run_until_complete(
             loop.create_unix_server(self.get_protocol(),
-                                    self.uds_path))
+                                    self.uds_path,
+                                    backlog=0))
 
-        loop.add_signal_handler(signal.SIGINT, loop.stop)
-        loop.add_signal_handler(signal.SIGTERM, loop.stop)
+        @asyncio.coroutine
+        def stopserver():
+            server.close()
+            yield from server.wait_closed()
+            loop.stop()
+
+        loop.add_signal_handler(signal.SIGINT,
+                                lambda *x: asyncio.Task(stopserver()))
+        loop.add_signal_handler(signal.SIGTERM,
+                                lambda *x: asyncio.Task(stopserver()))
 
         try:
             loop.run_forever()
@@ -55,7 +64,6 @@ class Server:
             # Close the server
             try:
                 server.close()
-                
                 loop.run_until_complete(server.wait_closed())
                 loop.close()
             finally:
