@@ -1,5 +1,4 @@
 from tempfile import mktemp
-import pickle
 import shutil
 
 from hypothesis import given
@@ -38,14 +37,14 @@ def test_Reader_next_only_one_db(rcls, wcls):
         # Write 10 entries
         w = wcls(tmpdir, max_log_events=100)
         for i in range(10):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         # Read 10 entries
         r = rcls(tmpdir)
         for i in range(10):
             data = r.next()
-            assert i == data
+            assert i == int(data)
 
         assert r.next() is None
 
@@ -66,14 +65,14 @@ def test_Reader_next_multiple_db(rcls, wcls):
         # Write 10 entries
         w = wcls(tmpdir, max_log_events=2)
         for i in range(10):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         # Read 10 entries
         r = rcls(tmpdir)
         for i in range(10):
             data = r.next()
-            assert i == data
+            assert i == int(data)
 
         assert r.next() is None
 
@@ -95,25 +94,25 @@ def test_Reader_next_only_one_db_with_writings(rcls, wcls):
         # Write 10 entries
         w = wcls(tmpdir, max_log_events=100)
         for i in range(10):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         # Read 10 entries
         r = rcls(tmpdir)
         for i in range(10):
             data = r.next()
-            assert i == data
+            assert i == int(data)
 
         assert r.next() is None
 
         for i in range(10, 20):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         # Read 10 entries
         for i in range(10, 20):
             data = r.next()
-            assert i == data
+            assert i == int(data)
 
         assert r.next() is None
     except:
@@ -135,25 +134,25 @@ def test_Reader_next_only_multiple_dbs_with_writings(rcls, wcls, max_log_events)
         # Write 10 entries
         w = wcls(tmpdir, max_log_events=max_log_events)
         for i in range(10):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         # Read 10 entries
         r = rcls(tmpdir)
         for i in range(10):
             data = r.next()
-            assert i == data
+            assert i == int(data)
 
         assert r.next() is None
 
         for i in range(10, 20):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         # Read 10 entries
         for i in range(10, 20):
             data = r.next()
-            assert i == data
+            assert i == int(data)
 
         assert r.next() is None
     except:
@@ -173,14 +172,14 @@ def test_Reader_new_Reader_starts_over(rcls, wcls):
         # Write 10 entries
         w = wcls(tmpdir, max_log_events=100)
         for i in range(10):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         # Read 10 entries
         r = rcls(tmpdir)
         for i in range(10):
             data = r.next()
-            assert i == data
+            assert i == int(data)
 
         assert r.next() is None
 
@@ -188,7 +187,7 @@ def test_Reader_new_Reader_starts_over(rcls, wcls):
         r = rcls(tmpdir)
         for i in range(10):
             data = r.next()
-            assert i == data
+            assert i == int(data)
 
         assert r.next() is None
     except:
@@ -213,7 +212,7 @@ def test_Reader_save_raises_if_no_checkpoint_defined(rcls, wcls):
         # Write 10 entries
         w = wcls(tmpdir)
         for i in range(10):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         r = rcls(tmpdir)
@@ -239,7 +238,7 @@ def test_Reader_can_save_and_restore_its_process(rcls, wcls, max_log_events):
         # Write 10 entries
         w = wcls(tmpdir, max_log_events=max_log_events)
         for i in range(10):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         # Read first 5 entries
@@ -247,14 +246,14 @@ def test_Reader_can_save_and_restore_its_process(rcls, wcls, max_log_events):
         for i in range(5):
             data = r.next_record()
             r.ack(data)
-            assert i == data.value
+            assert i == int(data.value)
         r.save()  # Make a checkpoint
 
         # Read last 5 entries
         r = rcls(tmpdir, checkpoint='reader1')
         for i in range(5, 10):
             data = r.next_record()
-            assert i == data.value
+            assert i == int(data.value)
 
         assert r.next_record() is None
     except:
@@ -277,7 +276,7 @@ def test_Reader_can_save_and_restore_its_process_multiple_save(rcls, wcls, max_l
         # Write 10 entries
         w = wcls(tmpdir, max_log_events=max_log_events)
         for i in range(10):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         # Read first 5 entries
@@ -285,14 +284,14 @@ def test_Reader_can_save_and_restore_its_process_multiple_save(rcls, wcls, max_l
         for i in range(5):
             data = r.next_record()
             r.ack(data)
-            assert i == data.value
+            assert i == int(data.value)
             r.save()  # Make a checkpoint
 
         # Read last 5 entries
         r = rcls(tmpdir, checkpoint='reader1')
         for i in range(5, 10):
             data = r.next_record()
-            assert i == data.value
+            assert i == int(data.value)
 
         assert r.next_record() is None
     except:
@@ -315,7 +314,7 @@ def test_Reader_can_save_and_restore_its_process_non_lineal(rcls, wcls, max_log_
         # Write 10 entries
         w = wcls(tmpdir, max_log_events=max_log_events)
         for i in range(100):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         # Read first 5 entries
@@ -330,7 +329,7 @@ def test_Reader_can_save_and_restore_its_process_non_lineal(rcls, wcls, max_log_
         r = rcls(tmpdir, checkpoint='reader1')
         for i in range(50):
             data = r.next_record()
-            assert data.value % 2 != 0
+            assert int(data.value) % 2 != 0
 
         assert r.next_record() is None
     except:
@@ -354,7 +353,7 @@ def test_Reader_load_raises_if_no_checkpoint(rcls, wcls):
         # Write 10 entries
         w = wcls(tmpdir)
         for i in range(10):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         r = rcls(tmpdir)
@@ -387,14 +386,14 @@ def test_Reader_next_record(rcls, wcls, max_log_events):
         # Write 10 entries
         w = wcls(tmpdir, max_log_events=max_log_events)
         for i in range(10):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         # Read first 5 entries
         r = rcls(tmpdir)
         for i in range(10):
             data = r.next_record().value
-            assert i == data
+            assert i == int(data)
 
         assert r.next_record() is None
     except:
@@ -415,7 +414,7 @@ def test_Reader_ack(rcls, wcls):
         # Write 10 entries
         w = wcls(tmpdir)
         for i in range(10):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         assert hasattr(reader.Reader, 'ack')
@@ -434,7 +433,7 @@ def test_Reader_register(rcls, wcls):
         # Write 10 entries
         w = wcls(tmpdir)
         for i in range(10):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         assert hasattr(rcls(tmpdir), 'register')
@@ -457,7 +456,7 @@ def test_Reader_ack_adds_to_register(rcls, wcls, max_log_events):
         # Write 10 entries
         w = wcls(tmpdir, max_log_events=max_log_events)
         for i in range(10):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
         w.set_current_log().sync()
 
         # Read first 5 entries
@@ -491,7 +490,7 @@ def test_Reader_has_next_log_one_log(rcls, wcls):
 
         # Write 10 entries
         w = wcls(tmpdir)
-        w.append('DATA')
+        w.append(b'DATA')
         w.set_current_log().sync()
 
         # Read first 5 entries
@@ -512,8 +511,8 @@ def test_Reader_has_next_log_two_logs(rcls, wcls):
         tmpdir = mktemp()
 
         w = wcls(tmpdir, max_log_events=1)
-        w.append('DATA')
-        w.append('DATA')
+        w.append(b'DATA')
+        w.append(b'DATA')
         w.set_current_log().sync()
 
         r = rcls(tmpdir)
@@ -544,20 +543,20 @@ def test_Reader_set_cursors_from_record(rcls, wcls):
         tmpdir = mktemp()
 
         w = wcls(tmpdir, max_log_events=1)
-        w.append('DATA1')
-        w.append('DATA2')
+        w.append(b'DATA1')
+        w.append(b'DATA2')
         w.set_current_log().sync()
 
         r = rcls(tmpdir)
 
         r.set_cursors(Record(liidx=1, clidx=1, value=None))
-        assert r.cl_cursor.current() == (1, pickle.dumps('DATA1'))
+        assert r.cl_cursor.current() == (1, b'DATA1')
 
         r.set_cursors(Record(liidx=2, clidx=1, value=None))
-        assert r.cl_cursor.current() == (1, pickle.dumps('DATA2'))
+        assert r.cl_cursor.current() == (1, b'DATA2')
 
         r.set_cursors(Record(liidx=1, clidx=1, value=None))
-        assert r.cl_cursor.current() == (1, pickle.dumps('DATA1'))
+        assert r.cl_cursor.current() == (1, b'DATA1')
 
     except:
         raise
@@ -601,7 +600,7 @@ def test_Reader_status_return_dict_with_status(rcls, wcls, num):
         r = rcls(tmpdir)
 
         for i in range(num):
-            w.append(i)
+            w.append(str(i).encode("ascii"))
 
         w.set_current_log().sync()
         assert not any(r.status().values())
@@ -647,7 +646,7 @@ def test_environment_but_no_databases_and_after_read_is_fine(rcls, wcls):
         r = rcls(tmpdir)
         assert r.next_record() is None
 
-        w.append('TEST')
+        w.append(b'TEST')
         w.set_current_log().sync()
 
         assert r.next_record() is not None
@@ -667,7 +666,7 @@ def test_environment_but_no_databases_and_after_read_is_fine_multiple_retry(rcls
         for i in range(10):
             assert r.next_record() is None
 
-        w.append('TEST')
+        w.append(b'TEST')
         w.set_current_log().sync()
 
         assert r.next_record() is not None

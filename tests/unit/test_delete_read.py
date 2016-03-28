@@ -14,15 +14,14 @@ def test_reader_starts_with_the_lowest_database_available():
         writer = TDSWriter(tmpdir, max_log_events=10)
 
         for x in range(25):
-            writer.append(x)
+            writer.append(str(x).encode("ascii"))
 
         writer.delete(1)
 
         reader = TDSReader(tmpdir, checkpoint='test')
         for x in range(10, 25):
             rec = reader.next_record()
-            print(rec)
-            assert rec.value == x
+            assert int(rec.value) == x
         assert reader.next_record() is None
     except:
         raise
@@ -41,14 +40,13 @@ def test_reader_starts_with_the_lowest_database_available_instantiate_before_del
         reader = TDSReader(tmpdir, checkpoint='test')
 
         for x in range(25):
-            writer.append(x)
+            writer.append(str(x).encode("ascii"))
 
         writer.delete(1)
 
         for x in range(10, 25):
             rec = reader.next_record()
-            print(rec)
-            assert rec.value == x
+            assert int(rec.value) == x
         assert reader.next_record() is None
     except:
         raise
