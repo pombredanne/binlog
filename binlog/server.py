@@ -5,6 +5,9 @@ import signal
 
 from .writer import TDSWriter
 
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 class Server:
     def __init__(self, base, uds_path):
@@ -47,27 +50,15 @@ class Server:
                                     self.uds_path,
                                     backlog=0))
 
-        @asyncio.coroutine
-        def stopserver():
-            server.close()
-            yield from server.wait_closed()
-            loop.stop()
 
-        loop.add_signal_handler(signal.SIGINT,
-                                lambda *x: asyncio.Task(stopserver()))
-        loop.add_signal_handler(signal.SIGTERM,
-                                lambda *x: asyncio.Task(stopserver()))
+        loop.add_signal_handler(signal.SIGINT, lambda *_: server.close())
+        loop.add_signal_handler(signal.SIGTERM, lambda *_: server.close())
 
         try:
-            loop.run_forever()
+            loop.run_until_complete(server.wait_closed())
         finally:
-            # Close the server
+            loop.close()
             try:
-                server.close()
-                loop.run_until_complete(server.wait_closed())
-                loop.close()
-            finally:
-                try:
-                    os.unlink(self.uds_path)
-                except IOError:
-                    pass
+                os.unlink(self.uds_path)
+            except IOError:
+                pass
