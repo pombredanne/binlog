@@ -27,8 +27,6 @@ class Register:
         """
         This add a new ack to the list.
 
-        chapa chapa chapa
-
         :param record: The record to ack to.
         :para last: .....
 

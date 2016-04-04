@@ -1,6 +1,20 @@
 CHANGELOG
 =========
 
+1.0.1
+-----
+
+- Better server stopping method.
+
+
+1.0.0
+-----
+
+- Removed the serialization method. Now the clients must provide their
+  own.
+- UNIX socket server.
+
+
 0.0.4
 -----
 
