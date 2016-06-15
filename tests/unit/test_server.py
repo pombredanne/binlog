@@ -46,3 +46,36 @@ def test_Server_protocol_store_in_binlog():
 
         r = TDSReader(base)
         assert r.next_record().value == b"TEST"
+
+
+def test_Server_protocol_not_store_in_binlog_when_no_data():
+    from binlog.server import Server
+    from binlog.reader import TDSReader
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as base:
+        s = Server(base, "/tmp/server.sock")
+
+        p = s.get_protocol()()
+        p.connection_made(None)
+        p.connection_lost(None)
+
+        r = TDSReader(base)
+        assert r.next_record() is None
+
+
+def test_Server_protocol_not_store_in_binlog_when_data_is_empty():
+    from binlog.server import Server
+    from binlog.reader import TDSReader
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as base:
+        s = Server(base, "/tmp/server.sock")
+
+        p = s.get_protocol()()
+        p.connection_made(None)
+        p.data_received(b"")
+        p.connection_lost(None)
+
+        r = TDSReader(base)
+        assert r.next_record() is None

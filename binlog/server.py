@@ -31,7 +31,8 @@ class Server:
                             "(reused protocol)")
 
                 def connection_lost(_self, exc):
-                    self.binlog.append(_self._buf.getvalue())
+                    if _self._buf.tell():
+                        self.binlog.append(_self._buf.getvalue())
                     _self._buf = None
 
             self._proto = BinlogProtocol
