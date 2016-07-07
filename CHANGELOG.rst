@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+1.1.0
+-----
+
+- Do not store a new row in server mode when the socket is opened and
+  closed without any data.
+
+
 1.0.1
 -----
 
