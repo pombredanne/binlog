@@ -5,6 +5,9 @@ import signal
 
 from .writer import TDSWriter
 
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 class Server:
     def __init__(self, base, uds_path):
@@ -45,22 +48,18 @@ class Server:
 
         server = loop.run_until_complete(
             loop.create_unix_server(self.get_protocol(),
-                                    self.uds_path))
+                                    self.uds_path,
+                                    backlog=0))
 
-        loop.add_signal_handler(signal.SIGINT, loop.stop)
-        loop.add_signal_handler(signal.SIGTERM, loop.stop)
+
+        loop.add_signal_handler(signal.SIGINT, lambda *_: server.close())
+        loop.add_signal_handler(signal.SIGTERM, lambda *_: server.close())
 
         try:
-            loop.run_forever()
+            loop.run_until_complete(server.wait_closed())
         finally:
-            # Close the server
+            loop.close()
             try:
-                server.close()
-                
-                loop.run_until_complete(server.wait_closed())
-                loop.close()
-            finally:
-                try:
-                    os.unlink(self.uds_path)
-                except IOError:
-                    pass
+                os.unlink(self.uds_path)
+            except IOError:
+                pass
