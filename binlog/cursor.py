@@ -1,3 +1,7 @@
+import bsddb3
+import time
+
+
 class CursorMethod:
     def __init__(self, db, name, cursor):
         self.db = db
@@ -6,10 +10,19 @@ class CursorMethod:
 
     def __call__(self, *args, **kwargs):
         try:
-            cursor = self.db.cursor()
-            if self.cursor.idx is not None:
-                cursor.set(self.cursor.idx)
-            data = getattr(cursor, self.name)(*args, **kwargs)
+            while True:
+                cursor = self.db.cursor()
+                if self.cursor.idx is not None:
+                    cursor.set(self.cursor.idx)
+                try:
+                    data = getattr(cursor, self.name)(*args, **kwargs)
+                except bsddb3.db.DBLockDeadlockError:
+                    print("Deadlock avoided!")
+                    time.sleep(0.1)
+                else:
+                    break
+                finally:
+                    cursor.close()
         except:
             raise
         else:

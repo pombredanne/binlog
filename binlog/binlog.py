@@ -28,6 +28,7 @@ class Binlog:
             raise NotImplementedError("`flags` attribute must be setted.")
 
         env.open(path, cls.flags)
+        env.set_lk_detect(db.DB_LOCK_DEFAULT)
 
         return env
 
@@ -45,6 +46,19 @@ class Binlog:
                 raise
 
         return logindex
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            if self.logindex is not None:
+                self.logindex.close()
+        except:
+            raise
+        finally:
+            if self.env is not None:
+                self.env.close(db.DB_FORCESYNC)
 
 
 class TDSBinlog(Binlog):

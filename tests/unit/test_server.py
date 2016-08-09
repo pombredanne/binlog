@@ -41,6 +41,7 @@ def test_Server_get_protocol():
         assert p1 is p2
 
 
+@pytest.mark.wip
 def test_Server_protocol_store_in_binlog():
     from binlog.server import Server
     from binlog.reader import TDSReader
@@ -58,6 +59,7 @@ def test_Server_protocol_store_in_binlog():
         assert r.next_record().value == b"TEST"
 
 
+@pytest.mark.wip
 def test_Server_protocol_not_store_in_binlog_when_no_data():
     from binlog.server import Server
     from binlog.reader import TDSReader
@@ -74,6 +76,7 @@ def test_Server_protocol_not_store_in_binlog_when_no_data():
         assert r.next_record() is None
 
 
+@pytest.mark.wip
 def test_Server_protocol_not_store_in_binlog_when_data_is_empty():
     from binlog.server import Server
     from binlog.reader import TDSReader
@@ -91,7 +94,7 @@ def test_Server_protocol_not_store_in_binlog_when_data_is_empty():
         assert r.next_record() is None
 
 
-@given(data=st.lists(st.binary(), min_size=1))
+@given(data=st.lists(st.binary(min_size=1), min_size=1))
 def test_Server_concurrent_writes(server_factory, data):
 
     with server_factory() as server:
