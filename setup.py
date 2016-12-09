@@ -30,5 +30,4 @@ setup(name='binlog',
           'acidfile==1.2.1'
       ],
       entry_points={
-          'console_scripts': ['binlog=binlog.__main__:main']
       })
