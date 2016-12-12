@@ -13,6 +13,8 @@ The `Meta` database
 
 This database store metadata about the `Entries` database.
 
+`next_entry_id`: ID of the next entry to be stored in the log.
+
 
 The `Entries` database
 ++++++++++++++++++++++
@@ -41,4 +43,12 @@ In this database readers store a register of which entries of the
 `Entries` database are readed and successfully processed. There is one
 `Reader` database in the `Checkpoint` environment for each reader in the
 system.
+
+
+.. TODO::
+
+   A better explaination of subregisters.
+
+   One reader may have one or more entries in its own database to store
+   different views of the ack status for its internal use. 
 
