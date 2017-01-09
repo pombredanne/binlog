@@ -10,11 +10,11 @@ Welcome to binlog's documentation!
 Contents:
 
 .. toctree::
-   :maxdepth: 2
    whatisbinlog
    features
    datamodel
-
+   lmdb_questions_and_answers
+   :maxdepth: 2
 
 
 Indices and tables
