@@ -1,6 +1,14 @@
 Data Model
 ==========
 
+The Binlog class
+----------------
+
+Any subclass of the `Binlog` class represents a way of storing entries
+in a binary log (a.k.a model). The instances of this subclasses
+represents entries. These entries can be commited (already stored in the
+log) or not.
+
 
 LMDB Environments
 -----------------
