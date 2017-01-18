@@ -1,6 +1,7 @@
 import pytest
-from binlog.model import Model
+
 from binlog.index import Index
+from binlog.model import Model
 
 
 def test_model_with_index():

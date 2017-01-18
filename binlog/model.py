@@ -1,4 +1,6 @@
 import re
+
+from .connection import Connection
 from .index import Index
 
 
@@ -30,4 +32,6 @@ class ModelMeta(type):
 
 
 class Model(dict, metaclass=ModelMeta):
-    pass
+    @classmethod
+    def open(cls, path, **kwargs):
+        return Connection(model=cls, path=path, kwargs=kwargs)
