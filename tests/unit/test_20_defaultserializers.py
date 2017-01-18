@@ -1,0 +1,25 @@
+from hypothesis import given
+from hypothesis.strategies import integers, text, data, dictionaries
+import pytest
+
+from binlog.serializer import NumericSerializer
+from binlog.serializer import ObjectSerializer
+from binlog.serializer import TextSerializer
+
+
+@given(data())
+@pytest.mark.parametrize("serializer,strategy",
+                         [(NumericSerializer, integers(
+                               min_value=0, max_value=2**64-1)),
+
+                          (TextSerializer, text(
+                               min_size=0, max_size=511)),
+
+                          (ObjectSerializer, dictionaries(
+                               text(), text()))])
+
+def test_serializers_conversion(serializer, strategy, data): 
+    python_value = expected = data.draw(strategy) 
+    current = serializer.python_value(serializer.db_value(python_value))
+
+    assert current == expected
