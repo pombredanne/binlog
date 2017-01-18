@@ -32,9 +32,8 @@ def test_connection_close(tmpdir):
     assert conn.closed
 
 
-@pytest.mark.wip
 def test_connection_is_context_manager(tmpdir):
     with Model.open(tmpdir) as conn:
         assert not conn.closed
 
-    assert not conn.closed
+    assert conn.closed

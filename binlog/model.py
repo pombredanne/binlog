@@ -2,6 +2,7 @@ import re
 
 from .connection import Connection
 from .index import Index
+from .serializer import NumericSerializer, ObjectSerializer
 
 
 class ModelMeta(type):
@@ -32,6 +33,23 @@ class ModelMeta(type):
 
 
 class Model(dict, metaclass=ModelMeta):
+    def __init__(self, *args, **kwargs):
+        self.pk = None
+        self.saved = False
+        super().__init__(*args, **kwargs)
+
     @classmethod
     def open(cls, path, **kwargs):
         return Connection(model=cls, path=path, kwargs=kwargs)
+
+    def save(self, pk, db, txn):
+        with txn.cursor(db) as cursor:
+            success = cursor.put(NumericSerializer.db_value(pk),
+                                 ObjectSerializer.db_value(self.copy()),
+                                 overwrite=False)
+
+            if success:
+                self.pk = pk
+                self.saved = True
+
+            return success

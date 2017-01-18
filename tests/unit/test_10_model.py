@@ -1,3 +1,6 @@
+import struct
+
+import lmdb
 import pytest
 
 
@@ -38,3 +41,46 @@ def test_model_inherits_from_dict():
     from binlog.model import Model
 
     assert issubclass(Model, dict)
+
+
+def test_save_store_data(tmpdir):
+    from binlog.model import Model
+
+    env = lmdb.open(str(tmpdir), max_dbs=1)
+    with env.begin(write=True) as txn:
+        db = env.open_db(b'test', txn=txn)
+        m = Model(data=0)
+        assert m.save(0, db, txn)
+
+    with env.begin(write=False) as txn:
+        db = env.open_db(b'test', txn=txn)
+        with txn.cursor(db) as cursor:
+            assert cursor.get(struct.pack("!Q", 0))
+
+
+def test_save_do_not_replace(tmpdir):
+    from binlog.model import Model
+
+    env = lmdb.open(str(tmpdir), max_dbs=1)
+
+    with env.begin(write=True) as txn:
+        db = env.open_db(b'test', txn=txn)
+        m = Model(data=0)
+        assert m.save(0, db, txn)
+
+    with env.begin(write=False) as txn:
+        db = env.open_db(b'test', txn=txn)
+        with txn.cursor(db) as cursor:
+            first = cursor.get(struct.pack("!Q", 0))
+
+    with env.begin(write=True) as txn:
+        db = env.open_db(b'test', txn=txn)
+        m = Model(data=1)
+        assert not m.save(0, db, txn)
+
+    with env.begin(write=False) as txn:
+        db = env.open_db(b'test', txn=txn)
+        with txn.cursor(db) as cursor:
+            second = cursor.get(struct.pack("!Q", 0))
+
+    assert first == second
