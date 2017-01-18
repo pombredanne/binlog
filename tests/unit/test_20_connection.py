@@ -3,7 +3,6 @@ import pytest
 from binlog.model import Model
 
 
-@pytest.mark.wip
 def test_model_open_returns_connection(tmpdir):
     from binlog.connection import Connection
 
@@ -12,7 +11,6 @@ def test_model_open_returns_connection(tmpdir):
     assert isinstance(conn, Connection)
 
 
-@pytest.mark.wip
 def test_connection_attributes(tmpdir):
 
     class CustomModel(Model):
@@ -27,7 +25,6 @@ def test_connection_attributes(tmpdir):
     assert not conn.closed
 
 
-@pytest.mark.wip
 def test_connection_close(tmpdir):
     conn = Model.open(tmpdir)
     conn.close()
