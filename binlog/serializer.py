@@ -1,5 +1,6 @@
 from functools import partial
 from operator import attrgetter
+from collections import namedtuple
 import abc
 import struct
 import pickle
@@ -38,3 +39,8 @@ class TextSerializer(Serializer):
 class ObjectSerializer(Serializer):
     python_value = staticmethod(pickle.loads)
     db_value = staticmethod(pickle.dumps)
+
+KV = namedtuple('KV', ('K', 'V'))
+
+Checkpoint = KV(TextSerializer, ObjectSerializer)
+NextEventID = KV(b'next_event_id', NumericSerializer)

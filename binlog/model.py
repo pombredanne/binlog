@@ -34,23 +34,30 @@ class ModelMeta(type):
 
 
 class Model(dict, metaclass=ModelMeta):
+    K = NumericSerializer
+    V = ObjectSerializer
+
     def __init__(self, *args, **kwargs):
         self.pk = None
         self.saved = False
+
         super().__init__(*args, **kwargs)
 
     @classmethod
     def open(cls, path, **kwargs):
         return Connection(model=cls, path=path, kwargs=kwargs)
 
+    def mark_as_saved(self, pk):
+        self.pk = pk
+        self.saved = True
+
     def save(self, pk, db, txn):
         with txn.cursor(db) as cursor:
-            success = cursor.put(NumericSerializer.db_value(pk),
-                                 ObjectSerializer.db_value(self.copy()),
+            success = cursor.put(self.K.db_value(pk),
+                                 self.V.db_value(self.copy()),
                                  overwrite=False)
 
             if success:
-                self.pk = pk
-                self.saved = True
+                self.mark_as_saved(pk)
 
             return success
