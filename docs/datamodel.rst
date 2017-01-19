@@ -16,8 +16,8 @@ LMDB Environments
 The `Data` environment
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The `Meta` database
-+++++++++++++++++++
+The `Config` database
++++++++++++++++++++++
 
 This database store metadata about the `Entries` database.
 

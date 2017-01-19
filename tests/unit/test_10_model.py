@@ -15,11 +15,12 @@ def test_model_have_meta_with_defaults():
     from binlog.model import Model
 
     b = Model()
-    assert b._meta['metadb_name'] == 'Meta'
-    assert b._meta['entriesdb_name'] == 'Entries'
-    assert b._meta['indexdb_format'] == ('{model._meta[entries_db_name]}'
+    assert b._meta['config_db_name'] == 'Config'
+    assert b._meta['entries_db_name'] == 'Entries'
+    assert b._meta['index_db_format'] == ('{model._meta[entries_db_name]}'
                                           '__idx__'
                                           '{index.name}')
+    assert b._meta['checkpoint_env_suffix'] == '_checkpoints'
 
 
 def test_model_subclass_can_override_meta_values():
@@ -28,13 +29,13 @@ def test_model_subclass_can_override_meta_values():
     OVERRIDED = 'OVERRIDED'
 
     class CustomModel(Model):
-        __meta_metadb_name__ = OVERRIDED 
+        __meta_config_db_name__ = OVERRIDED 
 
     b = CustomModel()
-    assert b._meta['metadb_name'] is OVERRIDED
+    assert b._meta['config_db_name'] is OVERRIDED
 
     with pytest.raises(AttributeError):
-        b.__meta_metadb_name__
+        b.__meta_config_db_name__
 
 
 def test_model_inherits_from_dict():

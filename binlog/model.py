@@ -9,11 +9,12 @@ class ModelMeta(type):
     def __new__(cls, name, bases, namespace, **kwds):
         _indexes = dict()
         _meta = {
-            'metadb_name': 'Meta',
-            'entriesdb_name': 'Entries',
-            'indexdb_format': ('{model._meta[entries_db_name]}'
-                               '__idx__'
-                               '{index.name}')}
+            'config_db_name': 'Config',
+            'entries_db_name': 'Entries',
+            'index_db_format': ('{model._meta[entries_db_name]}'
+                                '__idx__'
+                                '{index.name}'),
+            'checkpoint_env_suffix': '_checkpoints'}
         for attr, value in namespace.copy().items():
             # Replace any __meta_*__ by an entry in the _meta dict.
             m = re.match('^__meta_(.*)__$', attr)
