@@ -8,8 +8,7 @@ from .reader import Reader
 from .serializer import Checkpoint, NextEventID
 
 
-ConnectionResources = namedtuple('ConnectionResources',
-                                 ['env', 'txn', 'db'])
+Resources = namedtuple('Resources', ['env', 'txn', 'db'])
 
 
 class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
@@ -28,37 +27,30 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
     def _open_env(self, path, **kwargs):
         return lmdb.open(str(path), **kwargs)
 
-    def data_env(self):
-        path = self.path
-        max_dbs = 2 + len(self.model._indexes)
-
-        return self._open_env(path, max_dbs=max_dbs, **self.kwargs)
-
-    def checkpoint_env(self):
-        path = self.path + self.model._meta['checkpoint_env_suffix']
-        max_dbs = 1
-
-        return self._open_env(path, max_dbs=max_dbs, **self.kwargs)
-
-    def get_db(self, env, txn, meta_key):
+    def _get_db(self, env, txn, meta_key):
         return env.open_db(key=self.model._meta[meta_key].encode('utf-8'),
                            txn=txn)
 
     @contextmanager
-    def _data(self, write=True):
-        with self.data_env() as env:
+    def data(self, write=True):
+        path = self.path
+        max_dbs = 2 + len(self.model._indexes)
+
+        with self._open_env(path, max_dbs=max_dbs, **self.kwargs) as env:
             with env.begin(write=write) as txn:
-                yield ConnectionResources(
-                    env=env,
-                    txn=txn,
-                    db={'config': self.get_db(env, txn, 'config_db_name'),
-                        'entries': self.get_db(env, txn, 'entries_db_name')})
+                config_db = self._get_db(env, txn, 'config_db_name')
+                entries_db = self._get_db(env, txn, 'entries_db_name')
+                yield Resources(env=env, txn=txn, db={'config': config_db,
+                                                      'entries': entries_db})
 
     @contextmanager
-    def _checkpoints(self, write=True):
-        with self.checkpoint_env() as env:
+    def checkpoints(self, write=True):
+        path = self.path + self.model._meta['checkpoint_env_suffix']
+        max_dbs = 1
+
+        with self._open_env(path, max_dbs=max_dbs, **self.kwargs) as env:
             with env.begin(write=write) as txn:
-                yield ConnectionResources(env=env, txn=txn, db={})
+                yield Resources(env=env, txn=txn, db={})
 
     def _get_next_event_idx(self, res):
         # Get the next index
@@ -75,7 +67,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             cursor.put(NextEventID.K, NextEventID.V.db_value(value))
 
     def create(self, **kwargs):
-        with self._data(write=True) as res:
+        with self.data(write=True) as res:
             next_idx = self._get_next_event_idx(res)
             
             entry = self.model(**kwargs)
@@ -89,7 +81,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                 raise IntegrityError("Key already exists")
 
     def bulk_create(self, entries):
-        with self._data(write=True) as res:
+        with self.data(write=True) as res:
             next_idx = self._get_next_event_idx(res)
 
             def get_raw():
@@ -114,7 +106,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
     def reader(self, name=None):
         if name is not None:
-            with self._checkpoints(write=False) as res:
+            with self.checkpoints(write=False) as res:
                 with res.txn.cursor() as cursor:
                     raw = cursor.get(Checkpoint.K.db_value(name))
                     if raw is None:
@@ -127,7 +119,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         return Reader(self, name, config)
 
     def register_reader(self, name):
-        with self._checkpoints(write=True) as res:
+        with self.checkpoints(write=True) as res:
             with res.txn.cursor() as cursor:
                 success = cursor.put(Checkpoint.K.db_value(name),
                                      Checkpoint.V.db_value({}),

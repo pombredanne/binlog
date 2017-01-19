@@ -37,7 +37,7 @@ class Reader:
     def __iter__(self):
         def _iter():
             try:
-                with self.connection._data(write=False) as res:
+                with self.connection.data(write=False) as res:
                     with res.txn.cursor(res.db['entries']) as cursor:
                         for raw_key, raw_value in cursor:
                             entry = self.connection.model(
@@ -53,7 +53,7 @@ class Reader:
     def __reversed__(self):
         def _riter():
             try:
-                with self.connection._data(write=False) as res:
+                with self.connection.data(write=False) as res:
                     with res.txn.cursor(res.db['entries']) as cursor:
                         for raw_key, raw_value in cursor.iterprev():
                             entry = self.connection.model(
@@ -69,7 +69,7 @@ class Reader:
 
     @mask_exception(lmdb.ReadonlyError, IndexError)
     def __getitem__(self, key):
-        with self.connection._data(write=False) as res:
+        with self.connection.data(write=False) as res:
             with res.txn.cursor(res.db['entries']) as cursor:
                 if key < 0:
                     for idx, raw_item in enumerate(cursor.iterprev(), 1):
