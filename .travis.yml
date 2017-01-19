@@ -6,7 +6,7 @@ python:
     - "3.6"
     - "pypy"
 install:
-    - pip install -r requirements/tox.txt
+    - pip install -r requirements/develop.txt
     - pip install coveralls
     - python setup.py develop
 script:
