@@ -53,7 +53,7 @@ or more entries in the `Reader` database environment for each reader in the
 system in the form '{reader_name}::{key}'.
 
 
-.. TODO::
+.. todo::
 
    A better explaination of subregisters.
 
