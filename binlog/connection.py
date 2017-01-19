@@ -6,6 +6,7 @@ import lmdb
 from .exceptions import IntegrityError, ReaderDoesNotExist
 from .reader import Reader
 from .serializer import Checkpoint, NextEventID
+from .database import Config, Checkpoints, Entries
 
 
 Resources = namedtuple('Resources', ['env', 'txn', 'db'])
@@ -53,29 +54,26 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                 yield Resources(env=env, txn=txn, db={})
 
     def _get_next_event_idx(self, res):
-        # Get the next index
-        with res.txn.cursor(res.db['config']) as cursor:
-            next_idx_raw = cursor.get(NextEventID.K, None)
-        if next_idx_raw is None:
-            return 0
-        else:
-            return NextEventID.V.python_value(next_idx_raw)
+        with Config.cursor(res) as cursor:
+            return cursor.get('next_event_id', default=0)
 
     def _update_next_event_idx(self, res, value):
-        # Update next_idx
-        with res.txn.cursor(res.db['config']) as cursor:
-            cursor.put(NextEventID.K, NextEventID.V.db_value(value))
+        with Config.cursor(res) as cursor:
+            return cursor.put('next_event_id', value, overwrite=True)
 
     def create(self, **kwargs):
         with self.data(write=True) as res:
             next_idx = self._get_next_event_idx(res)
             
             entry = self.model(**kwargs)
-            success = entry.save(next_idx, res.db['entries'], res.txn)
+            with Entries.cursor(res) as cursor:
+                success = cursor.put(next_idx, entry.copy(), overwrite=False)
 
             self._update_next_event_idx(res, next_idx + 1)
 
             if success:
+                entry.pk = next_idx
+                entry.saved = True
                 return entry
             else:
                 raise IntegrityError("Key already exists")
@@ -87,11 +85,9 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             def get_raw():
                 for pk, entry in enumerate(entries, next_idx):
                     entry.mark_as_saved(pk)
+                    yield (pk, entry.copy())
 
-                    yield (self.model.K.db_value(pk),
-                           self.model.V.db_value(entry.copy()))
-
-            with res.txn.cursor(res.db['entries']) as cursor:
+            with Entries.cursor(res) as cursor:
                 consumed, added = cursor.putmulti(get_raw(),
                                                   dupdata=False,
                                                   overwrite=False,
@@ -107,12 +103,10 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
     def reader(self, name=None):
         if name is not None:
             with self.checkpoints(write=False) as res:
-                with res.txn.cursor() as cursor:
-                    raw = cursor.get(Checkpoint.K.db_value(name))
-                    if raw is None:
+                with Checkpoints.cursor(res) as cursor:
+                    config = cursor.get(name, default=None)
+                    if config is None:
                         raise ReaderDoesNotExist
-                    else:
-                        config = Checkpoint.V.python_value(raw)
         else:
             config = None
 
@@ -120,8 +114,5 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
     def register_reader(self, name):
         with self.checkpoints(write=True) as res:
-            with res.txn.cursor() as cursor:
-                success = cursor.put(Checkpoint.K.db_value(name),
-                                     Checkpoint.V.db_value({}),
-                                     overwrite=False)
-                return success
+            with Checkpoints.cursor(res) as cursor:
+                return cursor.put(name, {}, overwrite=False)
