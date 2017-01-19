@@ -94,7 +94,33 @@ def test_reader_unknown_index(tmpdir):
         db.register_reader('myreader')
         with db.reader('myreader') as reader:
             with pytest.raises(IndexError):
-                reader[1000]
+                reader[1]
+
+
+def test_reader_unknown_negative_index(tmpdir):
+    with Model.open(tmpdir) as db:
+        db.create(test='test')
+
+        db.register_reader('myreader')
+        with db.reader('myreader') as reader:
+            with pytest.raises(IndexError):
+                reader[-2]
+
+
+def test_reader_negative_index(tmpdir):
+    with Model.open(tmpdir) as db:
+        entries = [Model(idx=i) for i in range(10)]
+        db.bulk_create(entries)
+
+        db.register_reader('myreader')
+        with db.reader('myreader') as reader:
+            positive_indexes = range(len(entries))
+            negative_indexes = [(1 + i) * -1
+                                for i in reversed(positive_indexes)]
+
+
+            for pos, neg in zip(positive_indexes, negative_indexes):
+                assert reader[pos] == reader[neg]
 
 
 def test_ReadonlyError_is_masked(tmpdir):

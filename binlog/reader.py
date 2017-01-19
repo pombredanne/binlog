@@ -84,12 +84,24 @@ class Reader:
                                                     'entries_db_name',
                                                     txn)
                 with txn.cursor(entries_db) as cursor:
-                    raw_value = cursor.get(NumericSerializer.db_value(key))
-                    if raw_value is None:
-                        raise IndexError
+                    if key < 0:
+                        for idx, raw_item in enumerate(cursor.iterprev(), 1):
+                            if key + idx == 0:
+                                raw_key, raw_value = raw_item
+                                entry = self.connection.model(
+                                    **ObjectSerializer.python_value(raw_value))
+                                entry.saved = True
+                                entry.pk = NumericSerializer.python_value(raw_key)
+                                break
+                        else:
+                            raise IndexError
                     else:
-                        entry = self.connection.model(
-                            **ObjectSerializer.python_value(raw_value))
-                        entry.saved = True
-                        entry.pk = key 
-                        return entry
+                        raw_value = cursor.get(NumericSerializer.db_value(key))
+                        if raw_value is None:
+                            raise IndexError
+                        else:
+                            entry = self.connection.model(
+                                **ObjectSerializer.python_value(raw_value))
+                            entry.saved = True
+                            entry.pk = key 
+                    return entry
