@@ -44,7 +44,7 @@ is created for each index with the following naming scheme: TBD.
 The `Checkpoint` environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The `Reader` databases
+The `Readers` database
 ++++++++++++++++++++++
 
 In this database readers store a register of which entries of the

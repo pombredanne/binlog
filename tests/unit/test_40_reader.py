@@ -4,13 +4,20 @@ import pytest
 
 from binlog.model import Model
 from binlog.exceptions import ReaderDoesNotExist
+from binlog.database import Entries
 
 
-def test_non_existing_reader(tmpdir):
+def test_readers_environment_does_not_exist(tmpdir):
     with Model.open(tmpdir) as db:
         with pytest.raises(ReaderDoesNotExist):
             db.reader('nonexistingreader')
 
+def test_non_existing_reader(tmpdir):
+    with Model.open(tmpdir) as db:
+        db.register_reader('new')
+
+        with pytest.raises(ReaderDoesNotExist):
+            db.reader('nonexistingreader')
 
 def test_register_reader(tmpdir):
     with Model.open(tmpdir) as db:
@@ -75,6 +82,34 @@ def test_reader_reversed_read(tmpdir):
                                                  reversed(reader)):
                 assert current == expected
 
+
+def test_empty_iterator(tmpdir):
+    with Model.open(tmpdir) as db:
+        # Create and delete one register
+        db.create(test="data")
+        with db.data(write=True) as res:
+            with Entries.cursor(res) as cursor:
+                assert cursor.pop(0)
+
+        db.register_reader('myreader')
+        with db.reader('myreader') as reader:
+            for _ in reader:
+                assert False, "SHOULD be empty"
+
+
+def test_empty_reverse_iterator(tmpdir):
+    with Model.open(tmpdir) as db:
+        db.register_reader('myreader')
+
+        # Create and delete one register
+        db.create(test="data")
+        with db.data(write=True) as res:
+            with Entries.cursor(res) as cursor:
+                assert cursor.pop(0)
+
+        with db.reader('myreader') as reader:
+            for _ in reversed(reader):
+                assert False, "SHOULD be empty"
 
 def test_reader_index(tmpdir):
     with Model.open(tmpdir) as db:

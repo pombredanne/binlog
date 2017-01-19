@@ -4,6 +4,7 @@ from functools import wraps
 import lmdb
 
 from .serializer import NumericSerializer, ObjectSerializer
+from .database import Entries
 
 
 def mask_exception(exp, mask):
@@ -38,34 +39,33 @@ class Reader:
         def _iter():
             try:
                 with self.connection.data(write=False) as res:
-                    with res.txn.cursor(res.db['entries']) as cursor:
-                        for raw_key, raw_value in cursor:
-                            entry = self.connection.model(
-                                **ObjectSerializer.python_value(raw_value))
-                            entry.pk = NumericSerializer.python_value(raw_key)
+                    with Entries.cursor(res) as cursor:
+                        for key, value in cursor.iternext():
+                            entry = self.connection.model(**value)
+                            entry.pk = key
                             entry.saved = True
                             yield entry
+
             except lmdb.ReadonlyError as exc:
                 raise StopIteration from exc
 
         return _iter()
 
     def __reversed__(self):
-        def _riter():
+        def _iter():
             try:
                 with self.connection.data(write=False) as res:
-                    with res.txn.cursor(res.db['entries']) as cursor:
-                        for raw_key, raw_value in cursor.iterprev():
-                            entry = self.connection.model(
-                                **ObjectSerializer.python_value(raw_value))
+                    with Entries.cursor(res) as cursor:
+                        for key, value in cursor.iterprev():
+                            entry = self.connection.model(**value)
+                            entry.pk = key
                             entry.saved = True
-                            entry.pk = NumericSerializer.python_value(raw_key)
                             yield entry
+
             except lmdb.ReadonlyError as exc:
                 raise StopIteration from exc
 
-
-        return _riter()
+        return _iter()
 
     @mask_exception(lmdb.ReadonlyError, IndexError)
     def __getitem__(self, key):

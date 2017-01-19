@@ -1,8 +1,8 @@
 import pytest
 
-from binlog.database import Checkpoints
 from binlog.database import Config
 from binlog.database import Entries
+from binlog.database import Checkpoints
 from binlog.serializer import NumericSerializer
 from binlog.serializer import ObjectSerializer
 from binlog.serializer import TextSerializer

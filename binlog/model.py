@@ -11,10 +11,11 @@ class ModelMeta(type):
         _meta = {
             'config_db_name': 'Config',
             'entries_db_name': 'Entries',
+            'checkpoints_db_name': 'Checkpoints',
             'index_db_format': ('{model._meta[entries_db_name]}'
                                 '__idx__'
                                 '{index.name}'),
-            'checkpoint_env_suffix': '_checkpoints'}
+            'readers_env_suffix': '_readers'}
         for attr, value in namespace.copy().items():
             # Replace any __meta_*__ by an entry in the _meta dict.
             m = re.match('^__meta_(.*)__$', attr)

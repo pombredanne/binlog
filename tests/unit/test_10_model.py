@@ -17,10 +17,11 @@ def test_model_have_meta_with_defaults():
     b = Model()
     assert b._meta['config_db_name'] == 'Config'
     assert b._meta['entries_db_name'] == 'Entries'
+    assert b._meta['checkpoints_db_name'] == 'Checkpoints'
     assert b._meta['index_db_format'] == ('{model._meta[entries_db_name]}'
                                           '__idx__'
                                           '{index.name}')
-    assert b._meta['checkpoint_env_suffix'] == '_checkpoints'
+    assert b._meta['readers_env_suffix'] == '_readers'
 
 
 def test_model_subclass_can_override_meta_values():

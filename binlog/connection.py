@@ -5,7 +5,6 @@ import lmdb
 
 from .exceptions import IntegrityError, ReaderDoesNotExist
 from .reader import Reader
-from .serializer import Checkpoint, NextEventID
 from .database import Config, Checkpoints, Entries
 
 
@@ -45,13 +44,16 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                                                       'entries': entries_db})
 
     @contextmanager
-    def checkpoints(self, write=True):
-        path = self.path + self.model._meta['checkpoint_env_suffix']
+    def readers(self, write=True):
+        path = self.path + self.model._meta['readers_env_suffix']
         max_dbs = 1
 
         with self._open_env(path, max_dbs=max_dbs, **self.kwargs) as env:
             with env.begin(write=write) as txn:
-                yield Resources(env=env, txn=txn, db={})
+                checkpoints_db = self._get_db(env, txn, 'checkpoints_db_name')
+                yield Resources(env=env,
+                                txn=txn,
+                                db={'checkpoints': checkpoints_db})
 
     def _get_next_event_idx(self, res):
         with Config.cursor(res) as cursor:
@@ -67,7 +69,10 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             
             entry = self.model(**kwargs)
             with Entries.cursor(res) as cursor:
-                success = cursor.put(next_idx, entry.copy(), overwrite=False)
+                success = cursor.put(next_idx,
+                                     entry.copy(),
+                                     overwrite=False,
+                                     append=True)
 
             self._update_next_event_idx(res, next_idx + 1)
 
@@ -102,17 +107,21 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
     def reader(self, name=None):
         if name is not None:
-            with self.checkpoints(write=False) as res:
-                with Checkpoints.cursor(res) as cursor:
-                    config = cursor.get(name, default=None)
-                    if config is None:
-                        raise ReaderDoesNotExist
+            try:
+                with self.readers(write=False) as res:
+                    with Checkpoints.cursor(res) as cursor:
+                        config = cursor.get(name, default=None)
+            except lmdb.ReadonlyError as exc:
+                raise ReaderDoesNotExist from exc
+            else:
+                if config is None:
+                    raise ReaderDoesNotExist
         else:
             config = None
 
         return Reader(self, name, config)
 
     def register_reader(self, name):
-        with self.checkpoints(write=True) as res:
+        with self.readers(write=True) as res:
             with Checkpoints.cursor(res) as cursor:
                 return cursor.put(name, {}, overwrite=False)
