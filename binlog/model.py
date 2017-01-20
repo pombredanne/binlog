@@ -15,7 +15,8 @@ class ModelMeta(type):
             'index_db_format': ('{model._meta[entries_db_name]}'
                                 '__idx__'
                                 '{index.name}'),
-            'readers_env_suffix': '_readers'}
+            'readers_env_directory': 'readers',
+            'data_env_directory': 'data'}
         for attr, value in namespace.copy().items():
             # Replace any __meta_*__ by an entry in the _meta dict.
             m = re.match('^__meta_(.*)__$', attr)

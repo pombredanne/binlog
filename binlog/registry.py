@@ -2,7 +2,7 @@ from collections import namedtuple
 from bisect import insort, bisect_left
 
 
-class Register:
+class Registry:
     def __init__(self):
         self.initial = None
         self.acked = []
@@ -42,7 +42,7 @@ class Register:
                 insort(self.acked, (idx, idx))
                 return True
 
-    def __repr__(self):
+    def __repr__(self):  # pragma: no cover
         return repr(self.acked)
 
     def __contains__(self, value):

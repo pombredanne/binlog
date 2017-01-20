@@ -1,11 +1,14 @@
 from collections import namedtuple
 from contextlib import contextmanager
+from pathlib import Path
 
 import lmdb
 
+from .database import Config, Checkpoints, Entries
 from .exceptions import IntegrityError, ReaderDoesNotExist
 from .reader import Reader
-from .database import Config, Checkpoints, Entries
+from .registry import Registry
+from .util import MaskException
 
 
 Resources = namedtuple('Resources', ['env', 'txn', 'db'])
@@ -27,29 +30,35 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
     def _open_env(self, path, **kwargs):
         return lmdb.open(str(path), **kwargs)
 
-    def _get_db(self, env, txn, meta_key):
+    def _get_db(self, env, txn, meta_key, **kwargs):
         return env.open_db(key=self.model._meta[meta_key].encode('utf-8'),
-                           txn=txn)
+                           txn=txn, **kwargs)
+
+    def _gen_path(self, metaname):
+        basename = Path(str(self.path))
+        dirname = Path(self.model._meta['data_env_directory'])
+        return str(basename / dirname)
 
     @contextmanager
     def data(self, write=True):
-        path = self.path
+        path = self._gen_path('data_env_directory')
         max_dbs = 2 + len(self.model._indexes)
 
         with self._open_env(path, max_dbs=max_dbs, **self.kwargs) as env:
-            with env.begin(write=write) as txn:
+            with env.begin(write=write, buffers=True) as txn:
                 config_db = self._get_db(env, txn, 'config_db_name')
-                entries_db = self._get_db(env, txn, 'entries_db_name')
+                entries_db = self._get_db(env, txn, 'entries_db_name',
+                                          integerkey=True)
                 yield Resources(env=env, txn=txn, db={'config': config_db,
                                                       'entries': entries_db})
 
     @contextmanager
     def readers(self, write=True):
-        path = self.path + self.model._meta['readers_env_suffix']
+        path = self._gen_path('readers_env_directory')
         max_dbs = 1
 
         with self._open_env(path, max_dbs=max_dbs, **self.kwargs) as env:
-            with env.begin(write=write) as txn:
+            with env.begin(write=write, buffers=True) as txn:
                 checkpoints_db = self._get_db(env, txn, 'checkpoints_db_name')
                 yield Resources(env=env,
                                 txn=txn,
@@ -105,23 +114,25 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             else:
                 return added
 
+    @MaskException(lmdb.ReadonlyError, ReaderDoesNotExist)
     def reader(self, name=None):
         if name is not None:
-            try:
-                with self.readers(write=False) as res:
-                    with Checkpoints.cursor(res) as cursor:
-                        config = cursor.get(name, default=None)
-            except lmdb.ReadonlyError as exc:
-                raise ReaderDoesNotExist from exc
-            else:
-                if config is None:
-                    raise ReaderDoesNotExist
+            with self.readers(write=False) as res:
+                with Checkpoints.cursor(res) as cursor:
+                    registry = cursor.get(name, default=None)
+                    if registry is None:
+                        raise ReaderDoesNotExist
         else:
-            config = None
+            registry = None
 
-        return Reader(self, name, config)
+        return Reader(self, name, registry)
 
     def register_reader(self, name):
         with self.readers(write=True) as res:
             with Checkpoints.cursor(res) as cursor:
-                return cursor.put(name, {}, overwrite=False)
+                return cursor.put(name, Registry(), overwrite=False)
+
+    def save_registry(self, name, registry):
+        with self.readers(write=True) as res:
+            with Checkpoints.cursor(res) as cursor:
+                return cursor.put(name, registry, overwrite=True)

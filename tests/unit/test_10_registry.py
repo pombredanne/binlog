@@ -5,56 +5,56 @@ from hypothesis import strategies as st
 import pytest
 
 
-def test_register_exists():
+def test_registry_exists():
     try:
-        from binlog.register import Register
+        from binlog.registry import Registry
     except ImportError as exc:
         assert False, exc
 
 
-def test_register_initialization():
-    from binlog.register import Register
+def test_registry_initialization():
+    from binlog.registry import Registry
 
-    r = Register()
+    r = Registry()
 
     assert r.initial == None
     assert r.acked == []
 
 
 @given(data=st.integers())
-def test_register_add_sets_initial(data):
-    from binlog.register import Register
+def test_registry_add_sets_initial(data):
+    from binlog.registry import Registry
 
-    r = Register()
+    r = Registry()
 
     r.add(data)
     assert r.initial == data
 
 
 @given(data=st.integers())
-def test_register_add_starts_range(data):
-    from binlog.register import Register
+def test_registry_add_starts_range(data):
+    from binlog.registry import Registry
 
-    r = Register()
+    r = Registry()
 
     assert r.add(data)
     assert r.acked == [(data, data)]
 
 
-def test_register_add_only_accept_integers():
-    from binlog.register import Register
+def test_registry_add_only_accept_integers():
+    from binlog.registry import Registry
 
-    r = Register()
+    r = Registry()
 
     with pytest.raises(ValueError):
         r.add(None)
 
 
 @given(data=st.integers(min_value=10))
-def test_register_add_non_consecutive(data):
-    from binlog.register import Register
+def test_registry_add_non_consecutive(data):
+    from binlog.registry import Registry
 
-    r = Register()
+    r = Registry()
 
     r.add(0)
     assert (0, 0) in r.acked
@@ -64,10 +64,10 @@ def test_register_add_non_consecutive(data):
 
 
 @given(data=st.integers(min_value=0))
-def test_register_add_consecutive_right_side(data):
-    from binlog.register import Register
+def test_registry_add_consecutive_right_side(data):
+    from binlog.registry import Registry
 
-    r = Register()
+    r = Registry()
 
     r.add(data)
     r.add(data + 1)
@@ -76,10 +76,10 @@ def test_register_add_consecutive_right_side(data):
 
 
 @given(data=st.integers(min_value=1))
-def test_register_add_consecutive_left_side(data):
-    from binlog.register import Register
+def test_registry_add_consecutive_left_side(data):
+    from binlog.registry import Registry
 
-    r = Register()
+    r = Registry()
 
     r.add(data)
     r.add(data - 1)
@@ -88,10 +88,10 @@ def test_register_add_consecutive_left_side(data):
 
 
 @given(data=st.integers(min_value=1))
-def test_register_add_consecutive_left_and_right(data):
-    from binlog.register import Register
+def test_registry_add_consecutive_left_and_right(data):
+    from binlog.registry import Registry
 
-    r = Register()
+    r = Registry()
 
     r.add(data - 1)
     r.add(data + 1)
@@ -100,20 +100,20 @@ def test_register_add_consecutive_left_and_right(data):
     assert (data - 1, data + 1) in r.acked
 
 
-def test_register_double_add():
-    from binlog.register import Register
+def test_registry_double_add():
+    from binlog.registry import Registry
 
-    r = Register()
+    r = Registry()
 
     assert r.add(0)
     assert not r.add(0)
 
 
 @given(data=st.integers(min_value=-100, max_value=100))
-def test_register_add_randomized_range(data):
-    from binlog.register import Register
+def test_registry_add_randomized_range(data):
+    from binlog.registry import Registry
 
-    r = Register()
+    r = Registry()
 
     l = list(range(data, data + 101)) * random.randint(1, 3)
     random.shuffle(l)
@@ -125,10 +125,10 @@ def test_register_add_randomized_range(data):
 
 
 @given(data=st.lists(st.integers(min_value=-100, max_value=100)))
-def test_register_is_always_sorted(data):
-    from binlog.register import Register
+def test_registry_is_always_sorted(data):
+    from binlog.registry import Registry
 
-    r = Register()
+    r = Registry()
 
     for i in data:
         r.add(i)
@@ -138,10 +138,10 @@ def test_register_is_always_sorted(data):
 
 @given(data=st.lists(st.integers(min_value=-100, max_value=100)),
        point=st.integers(min_value=-100, max_value=100))
-def test_register_contains(data, point):
-    from binlog.register import Register
+def test_registry_contains(data, point):
+    from binlog.registry import Registry
 
-    r = Register()
+    r = Registry()
 
     for i in data:
         r.add(i)

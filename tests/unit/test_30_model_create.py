@@ -1,3 +1,4 @@
+import os
 import pickle
 import struct
 
@@ -13,7 +14,8 @@ def test_create_store_entry(tmpdir):
     with Model.open(tmpdir) as db:
         entry = db.create(**saved)
 
-    env = lmdb.open(str(tmpdir), max_dbs=1)
+    env = lmdb.open(os.path.join(str(tmpdir),
+                                 Model._meta["data_env_directory"]), max_dbs=1)
     with env.begin() as txn:
         entries_db = env.open_db(Model._meta["entries_db_name"].encode("utf-8"),
                                 txn=txn)
@@ -76,7 +78,8 @@ def test_bulk_create_multiple_times(tmpdir):
 def test_create_index_collision(tmpdir):
     from binlog.exceptions import IntegrityError
 
-    env = lmdb.open(str(tmpdir), max_dbs=1)
+    env = lmdb.open(os.path.join(str(tmpdir),
+                                 Model._meta["data_env_directory"]), max_dbs=1)
     with env.begin(write=True) as txn:
         entries_db = env.open_db(Model._meta["entries_db_name"].encode("utf-8"),
                                 txn=txn)
@@ -92,7 +95,8 @@ def test_create_index_collision(tmpdir):
 def test_bulk_create_index_collision(tmpdir):
     from binlog.exceptions import IntegrityError
 
-    env = lmdb.open(str(tmpdir), max_dbs=1)
+    env = lmdb.open(os.path.join(str(tmpdir),
+                                 Model._meta["data_env_directory"]), max_dbs=1)
     with env.begin(write=True) as txn:
         entries_db = env.open_db(Model._meta["entries_db_name"].encode("utf-8"),
                                 txn=txn)

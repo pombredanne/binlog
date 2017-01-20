@@ -176,3 +176,27 @@ def test_ReadonlyError_is_masked(tmpdir):
 def test_anonymous_reader_does_not_raise(tmpdir):
     with Model.open(tmpdir) as db:
         reader = db.reader()
+
+
+def test_reader_filter_exact(tmpdir):
+    with Model.open(tmpdir) as db:
+        entries = [Model(idx=i, even=(i % 2 == 0)) for i in range(100)]
+        db.bulk_create(entries)
+
+        with db.reader() as r:
+            for a, b in zip_longest(r.filter(even=True), range(0, 100, 2)):
+                assert a.pk == b
+
+
+def test_reader_filter_exact_multiple(tmpdir):
+    with Model.open(tmpdir) as db:
+        entries = [Model(idx=i,
+                         fizz=(i % 3 == 0),
+                         buzz=(i % 5 == 0)) for i in range(100)]
+        db.bulk_create(entries)
+
+        with db.reader() as r:
+            for a, b in zip_longest(r.filter(fizz=True, buzz=True),
+                                    [x for x in range(0, 100)
+                                     if x % 3 == x % 5 == 0]):
+                assert a.pk == b

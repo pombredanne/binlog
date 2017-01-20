@@ -21,7 +21,8 @@ def test_model_have_meta_with_defaults():
     assert b._meta['index_db_format'] == ('{model._meta[entries_db_name]}'
                                           '__idx__'
                                           '{index.name}')
-    assert b._meta['readers_env_suffix'] == '_readers'
+    assert b._meta['readers_env_directory'] == 'readers'
+    assert b._meta['data_env_directory'] == 'data'
 
 
 def test_model_subclass_can_override_meta_values():

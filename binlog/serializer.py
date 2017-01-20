@@ -40,7 +40,19 @@ class ObjectSerializer(Serializer):
     python_value = staticmethod(pickle.loads)
     db_value = staticmethod(pickle.dumps)
 
-KV = namedtuple('KV', ('K', 'V'))
 
-Checkpoint = KV(TextSerializer, ObjectSerializer)
-NextEventID = KV(b'next_event_id', NumericSerializer)
+class StringListSerializer(Serializer):
+    @staticmethod
+    def python_value(value):
+        return [x.decode('utf-8') for x in value.split(b'\0')]
+
+    @staticmethod
+    def db_value(value):
+        try:
+            assert value
+            assert all(bool(v) for v in value)
+            assert not any('\0' in v for v in value)
+            return b'\0'.join(x.encode('ascii') for x in value)
+        except (AssertionError, UnicodeEncodeError) as exc:
+            raise ValueError from exc
+
