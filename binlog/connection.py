@@ -47,8 +47,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         with self._open_env(path, max_dbs=max_dbs, **self.kwargs) as env:
             with env.begin(write=write, buffers=True) as txn:
                 config_db = self._get_db(env, txn, 'config_db_name')
-                entries_db = self._get_db(env, txn, 'entries_db_name',
-                                          integerkey=True)
+                entries_db = self._get_db(env, txn, 'entries_db_name')
                 yield Resources(env=env, txn=txn, db={'config': config_db,
                                                       'entries': entries_db})
 

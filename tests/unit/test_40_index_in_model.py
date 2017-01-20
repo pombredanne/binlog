@@ -1,6 +1,6 @@
 import pytest
 
-from binlog.index import Index
+from binlog.index import TextIndex
 from binlog.model import Model
 
 
@@ -13,7 +13,7 @@ def test_model_with_index():
     """
 
     class CustomModel(Model):
-        myindex = Index()
+        myindex = TextIndex()
 
     c = CustomModel()
 

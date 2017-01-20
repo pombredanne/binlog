@@ -16,4 +16,3 @@ from binlog.serializer import TextSerializer
 def test_database_serializers(database, key_serializer, value_serializer):
     assert database.K is key_serializer
     assert database.V is value_serializer
-

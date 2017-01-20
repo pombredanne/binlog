@@ -1,10 +1,4 @@
-import abc
 from collections import namedtuple
-from contextlib import contextmanager
-
-from .serializer import NumericSerializer
-from .serializer import ObjectSerializer
-from .serializer import TextSerializer
 
 
 class CursorProxy(namedtuple('_CursorProxy', ['db', 'cursor'])):
@@ -53,37 +47,3 @@ class CursorProxy(namedtuple('_CursorProxy', ['db', 'cursor'])):
 
     def iterprev(self, keys=True, values=True):
         return self._iterate(self.cursor.iterprev(keys, values), keys, values)
-
-
-class Database(metaclass=abc.ABCMeta):
-    @abc.abstractproperty
-    def K(self):  # pragma: no cover
-        """ Key serializer """
-        pass
-
-    @abc.abstractproperty
-    def V(self):  # pragma: no cover
-        """ Value serializer """
-        pass
-
-    @classmethod
-    @contextmanager
-    def cursor(cls, res):
-        db_handler = res.db.get(cls.__name__.lower())
-        with res.txn.cursor(db_handler) as cursor:
-            yield CursorProxy(cls, cursor)
-
-
-class Config(Database):
-    K = TextSerializer
-    V = ObjectSerializer
-
-
-class Entries(Database):
-    K = NumericSerializer
-    V = ObjectSerializer
-
-
-class Checkpoints(Database):
-    K = TextSerializer
-    V = ObjectSerializer
