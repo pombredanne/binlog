@@ -1,6 +1,6 @@
 import pytest
 
-from binlog.database import Database
+from binlog.databases import Database
 from binlog.serializer import NumericSerializer
 
 

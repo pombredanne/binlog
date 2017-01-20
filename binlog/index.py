@@ -1,4 +1,4 @@
-from .database import Database
+from .abstract import Database
 from .serializer import NumericSerializer
 from .serializer import TextSerializer
 

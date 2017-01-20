@@ -4,7 +4,7 @@ from pathlib import Path
 
 import lmdb
 
-from .database import Config, Checkpoints, Entries
+from .databases import Config, Checkpoints, Entries
 from .exceptions import IntegrityError, ReaderDoesNotExist
 from .reader import Reader
 from .registry import Registry

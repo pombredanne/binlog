@@ -1,4 +1,3 @@
-from collections import namedtuple
 from bisect import insort, bisect_left
 
 

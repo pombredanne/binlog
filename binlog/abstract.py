@@ -1,9 +1,7 @@
-import abc
 from contextlib import contextmanager
+import abc
 
-from .serializer import NumericSerializer
-from .serializer import ObjectSerializer
-from .serializer import TextSerializer
+from .cursor import CursorProxy
 
 
 class Database(metaclass=abc.ABCMeta):

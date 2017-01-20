@@ -4,7 +4,7 @@ import pytest
 
 from binlog.model import Model
 from binlog.exceptions import ReaderDoesNotExist
-from binlog.database import Entries
+from binlog.databases import Entries
 
 
 def test_readers_environment_does_not_exist(tmpdir):

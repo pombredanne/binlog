@@ -1,15 +1,15 @@
 import pytest
 
 
-def test_database_exists():
+def test_databases_exists():
     try:
-        from binlog.database import Database
+        from binlog.databases import Database
     except ImportError as exc:
         assert False, exc
 
 
-def test_database_is_abstract():
-    from binlog.database import Database
+def test_databases_is_abstract():
+    from binlog.databases import Database
 
     with pytest.raises(TypeError):
         Database()

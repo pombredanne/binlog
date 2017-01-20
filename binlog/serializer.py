@@ -2,6 +2,8 @@ from functools import partial
 import struct
 import pickle
 
+from .abstract import Serializer
+
 
 class NumericSerializer(Serializer):
     @staticmethod
@@ -40,4 +42,3 @@ class StringListSerializer(Serializer):
             return b'\0'.join(x.encode('ascii') for x in value)
         except (AssertionError, UnicodeEncodeError) as exc:
             raise ValueError from exc
-

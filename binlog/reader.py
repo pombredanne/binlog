@@ -1,8 +1,6 @@
-from collections import namedtuple
-
 import lmdb
 
-from .database import Entries
+from .databases import Entries
 from .serializer import NumericSerializer, ObjectSerializer
 from .util import MaskException
 
