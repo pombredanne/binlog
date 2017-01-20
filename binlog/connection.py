@@ -34,10 +34,20 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         return env.open_db(key=self.model._meta[meta_key].encode('utf-8'),
                            txn=txn, **kwargs)
 
+    def _get_idx(self, env, txn, db_name, **kwargs):
+        return env.open_db(
+            key=db_name.encode('utf-8'),
+            txn=txn,
+            **kwargs)
+
     def _gen_path(self, metaname):
         basename = Path(str(self.path))
         dirname = Path(self.model._meta['data_env_directory'])
         return str(basename / dirname)
+
+    def _get_index_name(self, name):
+        template = self.model._meta['index_db_format']
+        return template.format(model=self.model, index_name=name)
 
     @contextmanager
     def data(self, write=True):
@@ -46,10 +56,15 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
         with self._open_env(path, max_dbs=max_dbs, **self.kwargs) as env:
             with env.begin(write=write, buffers=True) as txn:
-                config_db = self._get_db(env, txn, 'config_db_name')
-                entries_db = self._get_db(env, txn, 'entries_db_name')
-                yield Resources(env=env, txn=txn, db={'config': config_db,
-                                                      'entries': entries_db})
+                dbs = {}
+                dbs['config'] = self._get_db(env, txn, 'config_db_name')
+                dbs['entries'] = self._get_db(env, txn, 'entries_db_name')
+                for index_name in self.model._indexes:
+                    index_db_name = self._get_index_name(index_name)
+                    dbs[index_db_name] = self._get_idx(env, txn, index_db_name,
+                                                      dupsort=True)
+
+                yield Resources(env=env, txn=txn, db=dbs)
 
     @contextmanager
     def readers(self, write=True):
@@ -71,6 +86,17 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         with Config.cursor(res) as cursor:
             return cursor.put('next_event_id', value, overwrite=True)
 
+    def _index(self, res, entry):
+        for index_name, index in self.model._indexes.items():
+            db_name = self._get_index_name(index_name)
+            with index.cursor(res, db_name=db_name) as cursor:
+                key = entry.get(index_name)
+                value = entry.pk
+                if index.mandatory and key is None:
+                    raise ValueError("value %s is mandatory" % index_name)
+                elif key is not None:
+                    cursor.put(key, value, overwrite=True, dupdata=True)
+
     def create(self, **kwargs):
         with self.data(write=True) as res:
             next_idx = self._get_next_event_idx(res)
@@ -87,6 +113,8 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             if success:
                 entry.pk = next_idx
                 entry.saved = True
+                self._index(res, entry)
+
                 return entry
             else:
                 raise IntegrityError("Key already exists")

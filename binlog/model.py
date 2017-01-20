@@ -14,7 +14,7 @@ class ModelMeta(type):
             'checkpoints_db_name': 'Checkpoints',
             'index_db_format': ('{model._meta[entries_db_name]}'
                                 '__idx__'
-                                '{index.name}'),
+                                '{index_name}'),
             'readers_env_directory': 'readers',
             'data_env_directory': 'data'}
         for attr, value in namespace.copy().items():

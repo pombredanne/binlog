@@ -17,8 +17,9 @@ class Database(metaclass=abc.ABCMeta):
 
     @classmethod
     @contextmanager
-    def cursor(cls, res):
-        db_handler = res.db.get(cls.__name__.lower())
+    def cursor(cls, res, db_name=None):
+        db_name = cls.__name__.lower() if db_name is None else db_name
+        db_handler = res.db.get(db_name)
         with res.txn.cursor(db_handler) as cursor:
             yield CursorProxy(cls, cursor)
 

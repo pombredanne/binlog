@@ -20,7 +20,7 @@ def test_model_have_meta_with_defaults():
     assert b._meta['checkpoints_db_name'] == 'Checkpoints'
     assert b._meta['index_db_format'] == ('{model._meta[entries_db_name]}'
                                           '__idx__'
-                                          '{index.name}')
+                                          '{index_name}')
     assert b._meta['readers_env_directory'] == 'readers'
     assert b._meta['data_env_directory'] == 'data'
 

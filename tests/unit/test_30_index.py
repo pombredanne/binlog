@@ -21,3 +21,14 @@ def test_index_key_is_numeric():
     from binlog.index import Index
 
     assert Index.V is NumericSerializer
+
+
+@pytest.mark.wip
+def test_index_mandatory_is_stored():
+    from binlog.index import Index
+
+    class MyIndex(Index):
+        K = None
+
+    assert MyIndex(mandatory=True).mandatory
+    assert not MyIndex(mandatory=False).mandatory
