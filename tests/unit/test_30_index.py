@@ -23,7 +23,6 @@ def test_index_key_is_numeric():
     assert Index.V is NumericSerializer
 
 
-@pytest.mark.wip
 def test_index_mandatory_is_stored():
     from binlog.index import Index
 
