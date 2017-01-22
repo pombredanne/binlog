@@ -37,6 +37,19 @@ def test_registered_reader_does_not_raise(tmpdir):
         assert reader
 
 
+def test_unregister_unexisting_reader(tmpdir):
+    with Model.open(tmpdir) as db:
+        with pytest.raises(ReaderDoesNotExist):
+            db.unregister_reader('nonexistingreader')
+
+
+def test_unregister_unexisting_reader_after_db_creation(tmpdir):
+    with Model.open(tmpdir) as db:
+        db.register_reader('otherreader')
+        with pytest.raises(ReaderDoesNotExist):
+            db.unregister_reader('nonexistingreader')
+
+
 def test_reader_is_not_closed(tmpdir):
     with Model.open(tmpdir) as db:
         db.register_reader('readername')

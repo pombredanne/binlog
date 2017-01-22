@@ -12,6 +12,12 @@ class Reader:
         self.registry = registry
         self.closed = False
 
+    def is_acked(self, entry):
+        if entry.saved and self.registry is not None and \
+                entry.pk in self.registry:
+            return True
+        return False
+
     def close(self):
         self.commit()
         self.closed = True

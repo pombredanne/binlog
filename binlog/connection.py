@@ -55,7 +55,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         max_dbs = 2 + len(self.model._indexes)
 
         with self._open_env(path, max_dbs=max_dbs, **self.kwargs) as env:
-            with env.begin(write=write, buffers=True) as txn:
+            with env.begin(write=write) as txn:
                 dbs = {}
                 dbs['config'] = self._get_db(env, txn, 'config_db_name')
                 dbs['entries'] = self._get_db(env, txn, 'entries_db_name')
@@ -72,7 +72,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         max_dbs = 1
 
         with self._open_env(path, max_dbs=max_dbs, **self.kwargs) as env:
-            with env.begin(write=write, buffers=True) as txn:
+            with env.begin(write=write) as txn:
                 checkpoints_db = self._get_db(env, txn, 'checkpoints_db_name')
                 yield Resources(env=env,
                                 txn=txn,
@@ -159,6 +159,13 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             with Checkpoints.cursor(res) as cursor:
                 return cursor.put(name, Registry(), overwrite=False)
 
+    @MaskException(lmdb.ReadonlyError, ReaderDoesNotExist)
+    def unregister_reader(self, name):
+        with self.readers(write=False) as res:
+            with Checkpoints.cursor(res) as cursor:
+                if cursor.pop(name) is None:
+                    raise ReaderDoesNotExist
+
     def save_registry(self, name, new_registry):
         with self.readers(write=True) as res:
             with Checkpoints.cursor(res) as cursor:
@@ -166,3 +173,28 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                 return cursor.put(name,
                                   stored_registry + new_registry,
                                   overwrite=True)
+
+    def list_readers(self):
+        with self.readers(write=True) as res:
+            with Checkpoints.cursor(res) as cursor:
+                return list(cursor.iternext(values=False))
+
+    def remove(self, entry):
+        readers = self.list_readers()
+        if not readers:
+            raise ReaderDoesNotExist
+
+        for name in readers:
+            with self.reader(name) as reader:
+                if not reader.is_acked(entry):
+                    return False
+        else:
+            with self.data(write=True) as res:
+                with Entries.cursor(res) as cursor:
+                    value = cursor.pop(entry.pk)
+                    return value is not None
+
+    def purge(self):
+        readers = [self.reader(name) for name in self.list_readers()]
+        if not readers:
+            return 0
