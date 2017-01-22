@@ -161,10 +161,12 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
     @MaskException(lmdb.ReadonlyError, ReaderDoesNotExist)
     def unregister_reader(self, name):
-        with self.readers(write=False) as res:
+        with self.readers(write=True) as res:
             with Checkpoints.cursor(res) as cursor:
                 if cursor.pop(name) is None:
                     raise ReaderDoesNotExist
+                else:
+                    return True
 
     def save_registry(self, name, new_registry):
         with self.readers(write=True) as res:
@@ -198,3 +200,5 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         readers = [self.reader(name) for name in self.list_readers()]
         if not readers:
             return 0
+        else:  # pragma: no cover
+            raise NotImplementedError
