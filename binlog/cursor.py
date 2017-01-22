@@ -1,7 +1,7 @@
 from collections import namedtuple
 
 
-class CursorProxy(namedtuple('_CursorProxy', ['db', 'cursor'])):
+class CursorProxy(namedtuple('_CursorProxy', ['db', 'res', 'cursor', 'db_name'])):
 
     def _to_key(self, data):
         return self.db.K.db_value(data)
@@ -60,3 +60,12 @@ class CursorProxy(namedtuple('_CursorProxy', ['db', 'cursor'])):
 
     def iterprev(self, keys=True, values=True):
         return self._iterate(self.cursor.iterprev(keys, values), keys, values)
+
+    def delete(self, key, value=None):
+        db_handler = self.db.get_db_handler(self.res, self.db_name)
+        if value is not None:
+            return self.res.txn.delete(self._to_key(key),
+                                       value=self._to_value(value),
+                                       db=db_handler)
+        else:
+            return self.res.txn.delete(self._to_key(key), db=db_handler)

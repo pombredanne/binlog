@@ -97,6 +97,16 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                 elif key is not None:
                     cursor.put(key, value, overwrite=True, dupdata=True)
 
+    def _unindex(self, res, entry):
+        for index_name, index in self.model._indexes.items():
+            db_name = self._get_index_name(index_name)
+            with index.cursor(res, db_name=db_name) as cursor:
+                key = entry.get(index_name)
+                if key is not None:  # pragma: no branch
+                    value = entry.pk
+                    cursor.delete(key, value)
+
+
     def create(self, **kwargs):
         with self.data(write=True) as res:
             next_idx = self._get_next_event_idx(res)
@@ -193,8 +203,10 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         else:
             with self.data(write=True) as res:
                 with Entries.cursor(res) as cursor:
-                    value = cursor.pop(entry.pk)
-                    return value is not None
+                    success = cursor.pop(entry.pk) is not None
+                    if success:
+                        self._unindex(res, entry)
+                    return success
 
     def purge(self):
         readers = [self.reader(name) for name in self.list_readers()]

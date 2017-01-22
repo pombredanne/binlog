@@ -16,12 +16,16 @@ class Database(metaclass=abc.ABCMeta):
         pass
 
     @classmethod
+    def get_db_handler(cls, res, db_name=None):
+        db_name = cls.__name__.lower() if db_name is None else db_name
+        return res.db.get(db_name)
+
+    @classmethod
     @contextmanager
     def cursor(cls, res, db_name=None):
-        db_name = cls.__name__.lower() if db_name is None else db_name
-        db_handler = res.db.get(db_name)
+        db_handler = cls.get_db_handler(res, db_name)
         with res.txn.cursor(db_handler) as cursor:
-            yield CursorProxy(cls, cursor)
+            yield CursorProxy(cls, res, cursor, db_name)
 
 
 class Serializer(metaclass=abc.ABCMeta):
