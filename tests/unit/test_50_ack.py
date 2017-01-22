@@ -15,7 +15,7 @@ def test_event_is_acked(tmpdir):
             assert e.pk in reader.registry
 
 
-def test_event_is_acked_after_commit(tmpdir):
+def test_acked_event_persist_after_reader_is_closed(tmpdir):
     with Model.open(tmpdir) as db:
         entry = db.create(test='data')
 

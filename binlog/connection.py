@@ -159,7 +159,10 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             with Checkpoints.cursor(res) as cursor:
                 return cursor.put(name, Registry(), overwrite=False)
 
-    def save_registry(self, name, registry):
+    def save_registry(self, name, new_registry):
         with self.readers(write=True) as res:
             with Checkpoints.cursor(res) as cursor:
-                return cursor.put(name, registry, overwrite=True)
+                stored_registry = cursor.get(name, default=Registry())
+                return cursor.put(name,
+                                  stored_registry + new_registry,
+                                  overwrite=True)

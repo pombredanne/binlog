@@ -13,9 +13,12 @@ class Reader:
         self.closed = False
 
     def close(self):
+        self.commit()
+        self.closed = True
+
+    def commit(self):
         if self.registry:
             self.connection.save_registry(self.name, self.registry)
-        self.closed = True
 
     def __enter__(self):
         return self

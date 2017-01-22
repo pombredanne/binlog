@@ -40,3 +40,86 @@ def test_reader_reversed_reads_except_acked(acks):
                 current = {e.pk for e in reversed(reader)}
 
                 assert expected == current
+
+
+def test_multiple_instances_of_same_reader_can_ack_safe1(tmpdir):
+    with Model.open(tmpdir) as db:
+        e0 = db.create(test='data0')
+        e1 = db.create(test='data1')
+
+        db.register_reader('myreader')
+        with db.reader('myreader') as reader1:
+            reader1.ack(e0)
+            with db.reader('myreader') as reader2:
+                reader2.ack(e1)
+
+        with db.reader('myreader') as reader:
+            assert not list(reader)
+
+
+def test_multiple_instances_of_same_reader_can_ack_safe2(tmpdir):
+    with Model.open(tmpdir) as db:
+        e0 = db.create(test='data0')
+        e1 = db.create(test='data1')
+
+        db.register_reader('myreader')
+        with db.reader('myreader') as reader1:
+            with db.reader('myreader') as reader2:
+                reader2.ack(e1)
+            reader1.ack(e0)
+
+        with db.reader('myreader') as reader:
+            assert not list(reader)
+
+
+def test_multiple_instances_of_same_reader_can_ack_safe3(tmpdir):
+    with Model.open(tmpdir) as db:
+        e0 = db.create(test='data0')
+        e1 = db.create(test='data1')
+
+        db.register_reader('myreader')
+        with db.reader('myreader') as reader1:
+            with db.reader('myreader') as reader2:
+                reader1.ack(e0)
+                reader2.ack(e1)
+
+        with db.reader('myreader') as reader:
+            assert not list(reader)
+
+
+def test_multiple_instances_of_same_reader_can_ack_safe4(tmpdir):
+    with Model.open(tmpdir) as db:
+        e0 = db.create(test='data0')
+        e1 = db.create(test='data1')
+
+        db.register_reader('myreader')
+        with db.reader('myreader') as reader1:
+            with db.reader('myreader') as reader2:
+                reader2.ack(e1)
+                reader1.ack(e0)
+
+        with db.reader('myreader') as reader:
+            assert not list(reader)
+
+
+def test_ack_is_not_effective_before_commit(tmpdir):
+    with Model.open(tmpdir) as db:
+        e0 = db.create(test='data0')
+
+        db.register_reader('myreader')
+        with db.reader('myreader') as reader1:
+            reader1.ack(e0)
+            with db.reader('myreader') as reader2:
+                assert list(reader2)
+
+
+def test_ack_is_effective_after_commit(tmpdir):
+    with Model.open(tmpdir) as db:
+        e0 = db.create(test='data0')
+
+        db.register_reader('myreader')
+        with db.reader('myreader') as reader1:
+            reader1.ack(e0)
+            reader1.commit()
+            with db.reader('myreader') as reader2:
+                assert not list(reader2)
