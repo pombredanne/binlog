@@ -82,8 +82,7 @@ class Registry:
                 return False
 
     def __or__(self, other):
-        a_ackd = self.acked.copy()
-        b_ackd = other.acked.copy()
+        a_ackd, b_ackd = self.acked.copy(), other.acked.copy()
 
         current_1 = None
         new_acked = deque()
@@ -117,5 +116,21 @@ class Registry:
 
         return Registry(acked=new_acked)
 
-    def __add__(self, other):
-        pass
+    def __and__(self, other):
+        a_ackd, b_ackd = self.acked.copy(), other.acked.copy()
+
+        n1 = n2 = None
+        R = deque()
+        while a_ackd or b_ackd:
+            if n1 is None:
+                n1 = popminleft(a_ackd, b_ackd)
+            n2 = popminleft(a_ackd, b_ackd)
+            if n2 is None:
+                break
+            r = n1 & n2
+            if r is not None:
+                R.append(r)
+            n1 = max(n1, n2, key=lambda s: s.R)
+            n2 = None
+
+        return Registry(acked=R)

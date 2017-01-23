@@ -211,3 +211,67 @@ def test_registries_support_union__start_and_end_are_consecutive():
     registry_x2 = registry_b | registry_a
 
     assert registry_x1.acked == registry_x2.acked == deque([S(0, 20)])
+
+
+@given(data_a=st.sets(st.integers(min_value=0, max_value=20)),
+       data_b=st.sets(st.integers(min_value=0, max_value=20)))
+@example(data_a={11, 12, 13, 14}, data_b={12, 14})
+@example(data_a={4, 5, 6}, data_b={4, 6})
+def test_registries_support_intersection(data_a, data_b):
+    from binlog.registry import Registry
+
+    registry_a = Registry()
+    registry_b = Registry()
+
+    for p in data_a:
+        registry_a.add(p)
+
+    for p in data_b:
+        registry_b.add(p)
+
+    registry_x = registry_a & registry_b
+
+    ack_points = data_a & data_b
+    non_ack_points = set(range(0, 20)) - ack_points
+
+    for p in ack_points:
+        assert p in registry_x
+
+    for p in non_ack_points:
+        assert p not in registry_x
+
+
+def test_registries_support_intersection__bigger_segment():
+    from binlog.registry import Registry, S
+
+    registry_a = Registry(acked=deque([S(0, 10)]))
+    registry_b = Registry(acked=deque([S(5, 8)]))
+
+    registry_x1 = registry_a & registry_b
+    registry_x2 = registry_b & registry_a
+
+    assert registry_x1.acked == registry_x2.acked == deque([S(5, 8)])
+
+
+def test_registries_support_intersection__overlap_segments():
+    from binlog.registry import Registry, S
+
+    registry_a = Registry(acked=deque([S(0, 10)]))
+    registry_b = Registry(acked=deque([S(5, 20)]))
+
+    registry_x1 = registry_a & registry_b
+    registry_x2 = registry_b & registry_a
+
+    assert registry_x1.acked == registry_x2.acked == deque([S(5, 10)])
+
+
+def test_registries_support_intersection__start_and_end_are_consecutive():
+    from binlog.registry import Registry, S
+
+    registry_a = Registry(acked=deque([S(0, 10)]))
+    registry_b = Registry(acked=deque([S(11, 20)]))
+
+    registry_x1 = registry_a & registry_b
+    registry_x2 = registry_b & registry_a
+
+    assert registry_x1.acked == registry_x2.acked == deque([])
