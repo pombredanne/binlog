@@ -5,7 +5,7 @@ from itertools import count
 from .util import popminleft
 
 
-class S(namedtuple('Segment', 'L,R')):
+class S(namedtuple('Segment', ['L', 'R'])):
     def __and__(self, other):
         L = max(self.L, other.L)
         R = min(self.R, other.R)
@@ -84,30 +84,25 @@ class Registry:
     def __or__(self, other):
         a_ackd, b_ackd = self.acked.copy(), other.acked.copy()
 
-        current_1 = None
+        current_1 = current_2 = None
         new_acked = deque()
         while a_ackd or b_ackd:
 
             if current_1 is None:
                 current_1 = popminleft(a_ackd, b_ackd)
 
-            # current_1 can't be None
-            current_1_left, current_1_right = current_1 
-
-            new_left = current_1_left
+            new_left = current_1.L
 
             current_2 = popminleft(a_ackd, b_ackd)
             if current_2 is None:
                 new_acked.append(current_1)
                 break
-            else:
-                current_2_left, current_2_right = current_2
 
-            if (current_2_left - 1) <= current_1_right <= current_2_right:
-                new_right = current_2_right
+            if (current_2.L - 1) <= current_1.R <= current_2.R:
+                new_right = current_2.R
                 current_1 = S(new_left, new_right)
-            elif current_1_right < current_2_right:
-                new_right = current_1_right
+            elif current_1.R < current_2.R:
+                new_right = current_1.R
                 new_acked.append(S(new_left, new_right))
                 current_1 = current_2
 
@@ -119,18 +114,18 @@ class Registry:
     def __and__(self, other):
         a_ackd, b_ackd = self.acked.copy(), other.acked.copy()
 
-        n1 = n2 = None
-        R = deque()
+        current_1 = current_2 = None
+        new_acked = deque()
         while a_ackd or b_ackd:
-            if n1 is None:
-                n1 = popminleft(a_ackd, b_ackd)
-            n2 = popminleft(a_ackd, b_ackd)
-            if n2 is None:
+            if current_1 is None:
+                current_1 = popminleft(a_ackd, b_ackd)
+            current_2 = popminleft(a_ackd, b_ackd)
+            if current_2 is None:
                 break
-            r = n1 & n2
+            r = current_1 & current_2
             if r is not None:
-                R.append(r)
-            n1 = max(n1, n2, key=lambda s: s.R)
-            n2 = None
+                new_acked.append(r)
+            current_1 = max(current_1, current_2, key=lambda s: s.R)
+            current_2 = None
 
-        return Registry(acked=R)
+        return Registry(acked=new_acked)
