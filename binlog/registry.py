@@ -20,6 +20,12 @@ class Registry:
         else:
             self.acked = acked
 
+    def __iter__(self):
+        def _iter():
+            for segment in self.acked:
+                yield from iter(range(segment.L, segment.R+1))
+        return _iter()
+
     def add(self, idx):
         if not isinstance(idx, int):
             raise ValueError("idx must be int")

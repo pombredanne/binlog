@@ -275,3 +275,16 @@ def test_registries_support_intersection__start_and_end_are_consecutive():
     registry_x2 = registry_b & registry_a
 
     assert registry_x1.acked == registry_x2.acked == deque([])
+
+
+@given(points=st.sets(st.integers(min_value=0,
+                                  max_value=100),
+                      average_size=50))
+def test_registry_is_iterator(points):
+    from binlog.registry import Registry
+
+    r = Registry() 
+    for p in points:
+        r.add(p)
+
+    assert list(r) == sorted(points)
