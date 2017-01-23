@@ -18,21 +18,20 @@ def test_registry_initialization():
 
     r = Registry()
 
-    assert r.initial == None
+    assert r.initial == 0
     assert r.acked == deque()
 
 
 @given(data=st.integers())
-def test_registry_add_sets_initial(data):
+def test_registry_init_sets_initial(data):
     from binlog.registry import Registry
 
-    r = Registry()
+    r = Registry(initial=data)
 
-    r.add(data)
     assert r.initial == data
 
 
-@given(data=st.integers())
+@given(data=st.integers(min_value=0))
 def test_registry_add_starts_range(data):
     from binlog.registry import Registry
 
@@ -47,8 +46,17 @@ def test_registry_add_only_accept_integers():
 
     r = Registry()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         r.add(None)
+
+
+def test_registry_cannot_add_lower_than_initial_value():
+    from binlog.registry import Registry
+
+    r = Registry(initial=1)
+
+    with pytest.raises(ValueError):
+        r.add(0)
 
 
 @given(data=st.integers(min_value=10))
@@ -110,7 +118,7 @@ def test_registry_double_add():
     assert not r.add(0)
 
 
-@given(data=st.integers(min_value=-100, max_value=100))
+@given(data=st.integers(min_value=0, max_value=100))
 def test_registry_add_randomized_range(data):
     from binlog.registry import Registry
 
@@ -125,7 +133,7 @@ def test_registry_add_randomized_range(data):
     assert (data, data + 100) in r.acked
 
 
-@given(data=st.lists(st.integers(min_value=-100, max_value=100)))
+@given(data=st.lists(st.integers(min_value=0, max_value=100)))
 def test_registry_is_always_sorted(data):
     from binlog.registry import Registry
 
@@ -137,8 +145,8 @@ def test_registry_is_always_sorted(data):
     assert list(r.acked) == sorted(r.acked)  # sorted always returns list
 
 
-@given(data=st.lists(st.integers(min_value=-100, max_value=100)),
-       point=st.integers(min_value=-100, max_value=100))
+@given(data=st.lists(st.integers(min_value=0, max_value=100)),
+       point=st.integers(min_value=0, max_value=100))
 def test_registry_contains(data, point):
     from binlog.registry import Registry
 

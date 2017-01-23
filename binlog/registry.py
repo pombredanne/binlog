@@ -13,8 +13,8 @@ class S(namedtuple('Segment', ['L', 'R'])):
 
 
 class Registry:
-    def __init__(self, acked=None):
-        self.initial = None
+    def __init__(self, initial=0, acked=None):
+        self.initial = initial
         if acked is None:
             self.acked = deque()
         else:
@@ -28,12 +28,10 @@ class Registry:
 
     def add(self, idx):
         if not isinstance(idx, int):
-            raise ValueError("idx must be int")
-
-        if self.initial is None:
-            self.initial = idx
-
-        if not self.acked:
+            raise TypeError("idx must be int")
+        elif idx < self.initial:
+            raise ValueError("idx must be equal or greater than initial")
+        elif not self.acked:
             self.acked.append(S(idx, idx))
             return True
         elif idx in self:
