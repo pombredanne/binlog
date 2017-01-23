@@ -1,4 +1,5 @@
 import random
+from collections import deque
 
 from hypothesis import given, example
 from hypothesis import strategies as st
@@ -18,7 +19,7 @@ def test_registry_initialization():
     r = Registry()
 
     assert r.initial == None
-    assert r.acked == []
+    assert r.acked == deque()
 
 
 @given(data=st.integers())
@@ -38,7 +39,7 @@ def test_registry_add_starts_range(data):
     r = Registry()
 
     assert r.add(data)
-    assert r.acked == [(data, data)]
+    assert r.acked == deque([(data, data)])
 
 
 def test_registry_add_only_accept_integers():
@@ -133,7 +134,7 @@ def test_registry_is_always_sorted(data):
     for i in data:
         r.add(i)
 
-    assert r.acked == sorted(r.acked)
+    assert list(r.acked) == sorted(r.acked)  # sorted always returns list
 
 
 @given(data=st.lists(st.integers(min_value=-100, max_value=100)),
@@ -152,7 +153,7 @@ def test_registry_contains(data, point):
 @given(data_a=st.sets(st.integers(min_value=0, max_value=20)),
        data_b=st.sets(st.integers(min_value=0, max_value=20)))
 @example(data_a={0}, data_b={0})
-def test_two_registry_can_be_added_together(data_a, data_b):
+def test_registries_support_union(data_a, data_b):
     from binlog.registry import Registry
 
     registry_a = Registry()
@@ -164,7 +165,7 @@ def test_two_registry_can_be_added_together(data_a, data_b):
     for p in data_b:
         registry_b.add(p)
 
-    registry_x = registry_a + registry_b
+    registry_x = registry_a | registry_b
 
     ack_points = data_a | data_b
     non_ack_points = set(range(0, 20)) - ack_points
@@ -176,37 +177,37 @@ def test_two_registry_can_be_added_together(data_a, data_b):
         assert p not in registry_x
 
 
-def test_two_registry_can_be_added_together__bigger_segment():
-    from binlog.registry import Registry
+def test_registries_support_union__bigger_segment():
+    from binlog.registry import Registry, S
 
-    registry_a = Registry(acked=[(0, 10)])
-    registry_b = Registry(acked=[(5, 8)])
+    registry_a = Registry(acked=deque([S(0, 10)]))
+    registry_b = Registry(acked=deque([S(5, 8)]))
 
-    registry_x1 = registry_a + registry_b
-    registry_x2 = registry_b + registry_a
+    registry_x1 = registry_a | registry_b
+    registry_x2 = registry_b | registry_a
 
-    assert registry_x1.acked == registry_x2.acked == [(0, 10)]
-
-
-def test_two_registry_can_be_added_together__overlap_segments():
-    from binlog.registry import Registry
-
-    registry_a = Registry(acked=[(0, 10)])
-    registry_b = Registry(acked=[(5, 20)])
-
-    registry_x1 = registry_a + registry_b
-    registry_x2 = registry_b + registry_a
-
-    assert registry_x1.acked == registry_x2.acked == [(0, 20)]
+    assert registry_x1.acked == registry_x2.acked == deque([S(0, 10)])
 
 
-def test_two_registry_can_be_added_together__start_and_end_are_consecutive():
-    from binlog.registry import Registry
+def test_registries_support_union__overlap_segments():
+    from binlog.registry import Registry, S
 
-    registry_a = Registry(acked=[(0, 10)])
-    registry_b = Registry(acked=[(11, 20)])
+    registry_a = Registry(acked=deque([S(0, 10)]))
+    registry_b = Registry(acked=deque([S(5, 20)]))
 
-    registry_x1 = registry_a + registry_b
-    registry_x2 = registry_b + registry_a
+    registry_x1 = registry_a | registry_b
+    registry_x2 = registry_b | registry_a
 
-    assert registry_x1.acked == registry_x2.acked == [(0, 20)]
+    assert registry_x1.acked == registry_x2.acked == deque([S(0, 20)])
+
+
+def test_registries_support_union__start_and_end_are_consecutive():
+    from binlog.registry import Registry, S
+
+    registry_a = Registry(acked=deque([S(0, 10)]))
+    registry_b = Registry(acked=deque([S(11, 20)]))
+
+    registry_x1 = registry_a | registry_b
+    registry_x2 = registry_b | registry_a
+
+    assert registry_x1.acked == registry_x2.acked == deque([S(0, 20)])

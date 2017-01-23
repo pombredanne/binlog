@@ -22,3 +22,16 @@ class MaskException:
         if exc_type is self.exp:
             raise self.mask from exc_type
 
+
+def popminleft(a, b):
+    if a and b:
+        if a[0].L <= b[0].L:
+            return a.popleft()
+        else:
+            return b.popleft()
+    elif a:
+        return a.popleft()
+    elif b:
+        return b.popleft()
+    else:
+        return None

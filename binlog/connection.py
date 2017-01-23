@@ -183,7 +183,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             with Checkpoints.cursor(res) as cursor:
                 stored_registry = cursor.get(name, default=Registry())
                 return cursor.put(name,
-                                  stored_registry + new_registry,
+                                  stored_registry | new_registry,
                                   overwrite=True)
 
     def list_readers(self):
