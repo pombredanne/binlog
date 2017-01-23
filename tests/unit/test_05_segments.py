@@ -4,7 +4,6 @@ from hypothesis import given, assume
 from hypothesis import strategies as st
 
 
-@pytest.mark.wip
 def test_segment_exists():
     try:
         from binlog.registry import S
@@ -12,7 +11,6 @@ def test_segment_exists():
         assert False, exc
 
 
-@pytest.mark.wip
 def test_segment_attributes():
     from binlog.registry import S
 
@@ -22,7 +20,6 @@ def test_segment_attributes():
     assert s.R == 1
 
 
-@pytest.mark.wip
 @given(a=st.integers(0, 10),
        b=st.integers(10, 20),
        c=st.integers(0, 10),
@@ -39,7 +36,6 @@ def test_segment_support_intersection_when_overlap(a, b, c, d):
     assert res0 == res1 == S(max(a, c), min(b, d))
 
 
-@pytest.mark.wip
 @given(a=st.integers(0, 10),
        b=st.integers(10, 20),
        c=st.integers(30, 40),
