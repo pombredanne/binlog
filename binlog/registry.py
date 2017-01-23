@@ -96,7 +96,6 @@ class Registry:
 
             current_2 = popminleft(a_ackd, b_ackd)
             if current_2 is None:
-                new_acked.append(current_1)
                 break
 
             if (current_2.L - 1) <= current_1.R <= current_2.R:

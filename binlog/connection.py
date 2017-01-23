@@ -1,6 +1,8 @@
 from collections import namedtuple
 from contextlib import contextmanager
+from functools import reduce
 from pathlib import Path
+import operator as op
 
 import lmdb
 
@@ -209,8 +211,18 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                     return success
 
     def purge(self):
-        readers = [self.reader(name) for name in self.list_readers()]
-        if not readers:
-            return 0
-        else:  # pragma: no cover
-            raise NotImplementedError
+        registries = [self.reader(name).registry
+                      for name in self.list_readers()]
+        removed = errors = 0
+        if registries:
+            common_acked = reduce(op.and_, registries)
+            with self.data(write=True) as res:
+                with Entries.cursor(res) as cursor:
+                    for pk in common_acked:
+                        value = cursor.pop(pk)
+                        if value is not None:
+                            removed += 1
+                            self._unindex(res, self.model(**value))
+                        else:
+                            errors = 0
+        return removed, errors

@@ -202,6 +202,18 @@ def test_registries_support_union__start_and_end_are_consecutive():
     assert registry_x1.acked == registry_x2.acked == deque([S(0, 20)])
 
 
+def test_registries_support_union_one_point():
+    from binlog.registry import Registry, S
+
+    registry_a = Registry(acked=deque([S(0, 0)]))
+    registry_b = Registry()
+
+    registry_x1 = registry_a | registry_b
+    registry_x2 = registry_b | registry_a
+
+    assert registry_x1.acked == registry_x2.acked == deque([S(0, 0)])
+
+
 @given(data_a=st.sets(st.integers(min_value=0, max_value=20)),
        data_b=st.sets(st.integers(min_value=0, max_value=20)))
 @example(data_a={11, 12, 13, 14}, data_b={12, 14})
@@ -264,6 +276,18 @@ def test_registries_support_intersection__start_and_end_are_consecutive():
     registry_x2 = registry_b & registry_a
 
     assert registry_x1.acked == registry_x2.acked == deque([])
+
+
+def test_registries_support_intersection__same_point():
+    from binlog.registry import Registry, S
+
+    registry_a = Registry(acked=deque([S(0, 0)]))
+    registry_b = Registry(acked=deque([S(0, 0)]))
+
+    registry_x1 = registry_a & registry_b
+    registry_x2 = registry_b & registry_a
+
+    assert registry_x1.acked == registry_x2.acked == deque([S(0, 0)])
 
 
 @given(points=st.sets(st.integers(min_value=0,
