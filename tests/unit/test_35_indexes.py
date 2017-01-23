@@ -29,8 +29,8 @@ def _test_index_is_sortable(serializer, python_value1, python_value2):
     return cmp_python == cmp_db
 
 
-@given(python_value1=st.text(min_size=0, max_size=511),
-       python_value2=st.text(min_size=0, max_size=511))
+@given(python_value1=st.text(min_size=0, max_size=511, average_size=10),
+       python_value2=st.text(min_size=0, max_size=511, average_size=10))
 def test_TextIndex_is_sortable(python_value1, python_value2): 
     assert _test_index_is_sortable(TextIndex.K,
                                    python_value1,

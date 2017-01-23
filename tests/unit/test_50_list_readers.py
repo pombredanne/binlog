@@ -10,6 +10,7 @@ from binlog.model import Model
 
 @given(readers=st.sets(st.text(min_size=1,
                                max_size=511,
+                               average_size=10,
                                alphabet=ascii_letters)))
 def test_list_readers(readers):
     with TemporaryDirectory() as tmpdir:
