@@ -18,17 +18,7 @@ def test_registry_initialization():
 
     r = Registry()
 
-    assert r.initial == 0
     assert r.acked == deque()
-
-
-@given(data=st.integers())
-def test_registry_init_sets_initial(data):
-    from binlog.registry import Registry
-
-    r = Registry(initial=data)
-
-    assert r.initial == data
 
 
 @given(data=st.integers(min_value=0))
@@ -48,15 +38,6 @@ def test_registry_add_only_accept_integers():
 
     with pytest.raises(TypeError):
         r.add(None)
-
-
-def test_registry_cannot_add_lower_than_initial_value():
-    from binlog.registry import Registry
-
-    r = Registry(initial=1)
-
-    with pytest.raises(ValueError):
-        r.add(0)
 
 
 @given(data=st.integers(min_value=10))
