@@ -20,7 +20,7 @@ from binlog.serializer import TextSerializer
 @given(data())
 def test_serializers_conversion(serializer, strategy, data): 
     python_value = expected = data.draw(strategy) 
-    current = serializer.python_value(serializer.db_value(python_value))
+    current = serializer.python_value(memoryview(serializer.db_value(python_value)))
 
     assert current == expected
 

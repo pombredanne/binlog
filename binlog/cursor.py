@@ -69,3 +69,6 @@ class CursorProxy(namedtuple('_CursorProxy', ['db', 'res', 'cursor', 'db_name'])
                                        db=db_handler)
         else:
             return self.res.txn.delete(self._to_key(key), db=db_handler)
+
+    def set_range(self, key):
+        return self.cursor.set_range(self._to_key(key))

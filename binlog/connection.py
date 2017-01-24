@@ -57,7 +57,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         max_dbs = 2 + len(self.model._indexes)
 
         with self._open_env(path, max_dbs=max_dbs, **self.kwargs) as env:
-            with env.begin(write=write) as txn:
+            with env.begin(write=write, buffers=True) as txn:
                 dbs = {}
                 dbs['config'] = self._get_db(env, txn, 'config_db_name')
                 dbs['entries'] = self._get_db(env, txn, 'entries_db_name')
@@ -74,7 +74,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         max_dbs = 1
 
         with self._open_env(path, max_dbs=max_dbs, **self.kwargs) as env:
-            with env.begin(write=write) as txn:
+            with env.begin(write=write, buffers=True) as txn:
                 checkpoints_db = self._get_db(env, txn, 'checkpoints_db_name')
                 yield Resources(env=env,
                                 txn=txn,

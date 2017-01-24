@@ -16,7 +16,7 @@ class NumericSerializer(Serializer):
 class TextSerializer(Serializer):
     @staticmethod
     def python_value(value):
-        return value.decode('utf-8')
+        return value.tobytes().decode('utf-8')
 
     @staticmethod
     def db_value(value):
@@ -31,7 +31,7 @@ class ObjectSerializer(Serializer):
 class StringListSerializer(Serializer):
     @staticmethod
     def python_value(value):
-        return [x.decode('utf-8') for x in value.split(b'\0')]
+        return [x.decode('utf-8') for x in value.tobytes().split(b'\0')]
 
     @staticmethod
     def db_value(value):
