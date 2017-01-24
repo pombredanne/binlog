@@ -46,7 +46,7 @@ def test_purge_with_one_reader(acked):
 
 @given(acked_list=st.lists(st.sets(st.integers(min_value=0, max_value=99)),
                            min_size=1,
-                           average_size=10))
+                           average_size=5))
 @example(acked_list = [{0}, set()])
 def test_purge_with_multiple_reader(acked_list):
     with TemporaryDirectory() as tmpdir:
