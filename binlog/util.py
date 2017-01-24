@@ -35,3 +35,8 @@ def popminleft(a, b):
         return b.popleft()
     else:
         return None
+
+
+def cmp(a, b):                                                              
+    """ http://codegolf.stackexchange.com/a/49779 """                       
+    return (a > b) - (a < b)

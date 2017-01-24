@@ -6,6 +6,7 @@ import pytest
 
 from binlog.index import TextIndex, NumericIndex
 from binlog.serializer import TextSerializer
+from binlog.util import cmp
 
 
 @pytest.mark.parametrize(
@@ -16,10 +17,6 @@ def test_index_serializers(index, key_serializer):
 
 
 def _test_index_is_sortable(serializer, python_value1, python_value2):
-    def cmp(a, b):
-        """ http://codegolf.stackexchange.com/a/49779 """
-        return (a > b) - (a < b)
-
     db_value1 = serializer.db_value(python_value1)
     db_value2 = serializer.db_value(python_value2)
 
