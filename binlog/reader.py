@@ -1,8 +1,10 @@
+from itertools import takewhile, islice
+
 import lmdb
 
 from .databases import Entries
 from .serializer import NumericSerializer, ObjectSerializer
-from .util import MaskException
+from .util import MaskException, cmp
 
 
 class Reader:
@@ -40,10 +42,12 @@ class Reader:
         else:
             return self.registry.add(entry.pk)
 
-    def _iter(self, cursor_attr, *args, **kwargs):
+    def _iter(self, cursor_attr, *args, start=None, **kwargs):
         with MaskException(lmdb.ReadonlyError, StopIteration):
             with self.connection.data(write=False) as res:
                 with Entries.cursor(res) as cursor:
+                    if start is not None:
+                        cursor.set_range(start)
                     it = getattr(cursor, cursor_attr)(*args, **kwargs)
                     for key, value in it:
                         if self.registry is None or key not in self.registry:
@@ -73,26 +77,73 @@ class Reader:
 
     @MaskException(lmdb.ReadonlyError, IndexError)
     def __getitem__(self, key):
-        with self.connection.data(write=False) as res:
-            with res.txn.cursor(res.db['entries']) as cursor:
-                if key < 0:
-                    for idx, raw_item in enumerate(cursor.iterprev(), 1):
-                        if key + idx == 0:
-                            raw_key, raw_value = raw_item
+        if isinstance(key, int):
+            with self.connection.data(write=False) as res:
+                with res.txn.cursor(res.db['entries']) as cursor:
+                    if key < 0:
+                        for idx, raw_item in enumerate(cursor.iterprev(), 1):
+                            if key + idx == 0:
+                                raw_key, raw_value = raw_item
+                                entry = self.connection.model(
+                                    **ObjectSerializer.python_value(raw_value))
+                                entry.saved = True
+                                entry.pk = NumericSerializer.python_value(
+                                    raw_key)
+                                break
+                        else:
+                            raise IndexError
+                    else:
+                        raw_value = cursor.get(NumericSerializer.db_value(key))
+                        if raw_value is None:
+                            raise IndexError
+                        else:
                             entry = self.connection.model(
                                 **ObjectSerializer.python_value(raw_value))
                             entry.saved = True
-                            entry.pk = NumericSerializer.python_value(raw_key)
-                            break
-                    else:
-                        raise IndexError
+                            entry.pk = key 
+                    return entry
+        elif isinstance(key, slice):
+            def to_num(v):
+                return 0 if v is None else v
+
+            def to_idx(v):
+                try:
+                    return self[v].pk if v is not None and v < 0 else v
+                except IndexError:
+                    return IndexError
+
+            def are_numbers(*items):
+                return all(isinstance(i, int) for i in items)
+
+            if key.step == 0:
+                raise ValueError("slice step cannot be zero")
+            else:
+                direction = 'iternext' if to_num(key.step) >= 0 else 'iterprev'
+
+            start = to_idx(key.start)
+            stop = to_idx(key.stop)
+            step = abs(key.step) if key.step is not None else 1
+            step_sign = (cmp(to_num(key.step), 0)
+                         if key.step is not None
+                         else 1)
+
+            if stop is IndexError and step_sign == 1:
+                it = []
+            elif start is IndexError and step_sign == -1:
+                it = []
+            elif isinstance(start, int) and isinstance(stop, int) and cmp(start, stop) == step_sign:
+                it = []
+            else:
+                it = self._iter(direction,
+                                start=None if start is IndexError else start)
+
+
+            if isinstance(stop, int) and step_sign is not None:
+                if step_sign > 0:
+                    it = takewhile(lambda i: i[0] < stop, it)
                 else:
-                    raw_value = cursor.get(NumericSerializer.db_value(key))
-                    if raw_value is None:
-                        raise IndexError
-                    else:
-                        entry = self.connection.model(
-                            **ObjectSerializer.python_value(raw_value))
-                        entry.saved = True
-                        entry.pk = key 
-                return entry
+                    it = takewhile(lambda i: i[0] > stop, it)
+
+            it = islice(it, None, None, step)
+
+            return (self._to_model(*i) for i in it)
