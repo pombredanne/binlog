@@ -93,11 +93,14 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         for index_name, index in self.model._indexes.items():
             db_name = self._get_index_name(index_name)
             with index.cursor(res, db_name=db_name) as cursor:
-                key = entry.get(index_name)
-                value = entry.pk
-                if index.mandatory and key is None:
-                    raise ValueError("value %s is mandatory" % index_name)
-                elif key is not None:
+                try:
+                    key = entry[index_name]
+                except KeyError as exc:
+                    if index.mandatory:
+                        raise ValueError(
+                            "value %s is mandatory" % index_name) from exc
+                else:
+                    value = entry.pk
                     cursor.put(key, value, overwrite=True, dupdata=True)
 
     def _unindex(self, res, entry):
@@ -127,7 +130,6 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                 entry.pk = next_idx
                 entry.saved = True
                 self._index(res, entry)
-
                 return entry
             else:
                 raise IntegrityError("Key already exists")
@@ -139,6 +141,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             def get_raw():
                 for pk, entry in enumerate(entries, next_idx):
                     entry.mark_as_saved(pk)
+                    self._index(res, entry)
                     yield (pk, entry.copy())
 
             with Entries.cursor(res) as cursor:

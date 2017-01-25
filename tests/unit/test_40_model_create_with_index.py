@@ -31,16 +31,31 @@ def test_model_create_use_index(tmpdir):
                 assert raw == NumericSerializer.db_value(0)
 
 
-def test_mandatory_index_not_provided(tmpdir):
+def test_mandatory_index_not_provided__create(tmpdir):
     with IndexedModel.open(tmpdir) as db:
         with pytest.raises(ValueError):
             db.create(address='address_value')
 
 
-def test_mandatory_index_not_provided_abort_transaction(tmpdir):
+def test_mandatory_index_not_provided_abort_transaction__create(tmpdir):
     with IndexedModel.open(tmpdir) as db:
         try:
             db.create(address='address_value')
+            assert False, "DID NOT RAISE"
+        except ValueError:
+            assert not list(db.reader())
+
+
+def test_mandatory_index_not_provided__bulk_create(tmpdir):
+    with IndexedModel.open(tmpdir) as db:
+        with pytest.raises(ValueError):
+            db.bulk_create([IndexedModel(address='address_value')])
+
+
+def test_mandatory_index_not_provided_abort_transaction__bulk_create(tmpdir):
+    with IndexedModel.open(tmpdir) as db:
+        try:
+            db.bulk_create([IndexedModel(address='address_value')])
             assert False, "DID NOT RAISE"
         except ValueError:
             assert not list(db.reader())

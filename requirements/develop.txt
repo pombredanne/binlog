@@ -2,3 +2,4 @@ Sphinx
 pytest
 hypothesis-pytest
 pytest-cov
+hypothesis-datetime==2.0.0

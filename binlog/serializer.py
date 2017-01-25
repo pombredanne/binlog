@@ -1,6 +1,9 @@
+from datetime import datetime, timedelta
 from functools import partial
-import struct
+import calendar
 import pickle
+import struct
+import time
 
 from .abstract import Serializer
 
@@ -41,3 +44,17 @@ class NullListSerializer(Serializer):
             return value.encode('ascii').replace(b'.', b'\0')
         except (AssertionError, UnicodeEncodeError) as exc:
             raise ValueError from exc
+
+
+class DatetimeSerializer(Serializer):
+    @staticmethod
+    def python_value(value):
+        int_val = NumericSerializer.python_value(value)
+        timestamp = datetime(*time.gmtime(int_val // 1000000)[:6])
+        return timestamp + timedelta(microseconds=int_val % 1000000)
+
+    @staticmethod
+    def db_value(value):
+        timestamp = int(calendar.timegm(value.timetuple())) * 1000000
+        int_val = timestamp + value.microsecond
+        return NumericSerializer.db_value(int_val)

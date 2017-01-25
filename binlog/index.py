@@ -1,4 +1,5 @@
 from .abstract import Database
+from .serializer import DatetimeSerializer
 from .serializer import NumericSerializer
 from .serializer import TextSerializer
 
@@ -17,3 +18,7 @@ class TextIndex(Index):
 
 class NumericIndex(Index):
     K = NumericSerializer
+
+
+class DatetimeIndex(Index):
+    K = DatetimeSerializer

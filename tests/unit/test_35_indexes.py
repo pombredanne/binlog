@@ -2,9 +2,10 @@ import operator as op
 
 from hypothesis import given, example
 from hypothesis import strategies as st
+from hypothesis.extra import datetime
 import pytest
 
-from binlog.index import TextIndex, NumericIndex
+from binlog.index import TextIndex, NumericIndex, DatetimeIndex
 from binlog.serializer import TextSerializer
 from binlog.util import cmp
 
@@ -39,5 +40,13 @@ def test_TextIndex_is_sortable(python_value1, python_value2):
 @example(python_value1=1, python_value2=256)
 def test_NumericIndex_is_sortable(python_value1, python_value2): 
     assert _test_index_is_sortable(NumericIndex.K,
+                                   python_value1,
+                                   python_value2)
+
+
+@given(python_value1=datetime.datetimes(timezones=[], min_year=1970),
+       python_value2=datetime.datetimes(timezones=[], min_year=1970))
+def test_DatetimeIndex_is_sortable(python_value1, python_value2): 
+    assert _test_index_is_sortable(DatetimeIndex.K,
                                    python_value1,
                                    python_value2)
