@@ -28,5 +28,7 @@ setup(name='binlog',
       install_requires=[
           'lmdb==0.92'
       ],
-      entry_points={
+      extras_require={
+          'migration':  ['bsddb3==6.1.0',
+                         'acidfile==1.2.1'],
       })
