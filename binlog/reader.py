@@ -131,7 +131,7 @@ class Reader:
                 it = []
             elif start is IndexError and step_sign == -1:
                 it = []
-            elif isinstance(start, int) and isinstance(stop, int) and cmp(start, stop) == step_sign:
+            elif are_numbers(start, stop) and cmp(start, stop) == step_sign:
                 it = []
             else:
                 it = self._iter(direction,
@@ -147,3 +147,5 @@ class Reader:
             it = islice(it, None, None, step)
 
             return (self._to_model(*i) for i in it)
+        else:
+            raise TypeError("Item must be int or slice.")

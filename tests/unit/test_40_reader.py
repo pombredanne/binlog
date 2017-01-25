@@ -12,12 +12,14 @@ def test_readers_environment_does_not_exist(tmpdir):
         with pytest.raises(ReaderDoesNotExist):
             db.reader('nonexistingreader')
 
+
 def test_non_existing_reader(tmpdir):
     with Model.open(tmpdir) as db:
         db.register_reader('new')
 
         with pytest.raises(ReaderDoesNotExist):
             db.reader('nonexistingreader')
+
 
 def test_register_reader(tmpdir):
     with Model.open(tmpdir) as db:
@@ -47,6 +49,7 @@ def test_unregister_existing_reader(tmpdir):
     with Model.open(tmpdir) as db:
         with pytest.raises(ReaderDoesNotExist):
             db.unregister_reader('nonexistingreader')
+
 
 def test_unregister_unexisting_reader_after_db_creation(tmpdir):
     with Model.open(tmpdir) as db:
@@ -129,6 +132,7 @@ def test_empty_reverse_iterator(tmpdir):
             for _ in reversed(reader):
                 assert False, "SHOULD be empty"
 
+
 def test_reader_index(tmpdir):
     with Model.open(tmpdir) as db:
         entries = [Model(idx=i) for i in range(10)]
@@ -138,6 +142,14 @@ def test_reader_index(tmpdir):
         with db.reader('myreader') as reader:
             for e in entries:
                 assert e == reader[e['idx']]
+
+
+def test_reader_non_integer(tmpdir):
+    with Model.open(tmpdir) as db:
+        db.register_reader('myreader')
+        with db.reader('myreader') as reader:
+            with pytest.raises(TypeError):
+                reader[None]
 
 
 def test_reader_unknown_index(tmpdir):
