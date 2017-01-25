@@ -22,7 +22,7 @@ def test_acked_event_persist_after_reader_is_closed(tmpdir):
         db.register_reader('myreader')
         with db.reader('myreader') as reader:
             e = reader[0]
-            reader.ack(reader[0])
+            reader.ack(e)
 
         # Reader commits registry on exit
 

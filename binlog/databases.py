@@ -4,6 +4,7 @@ from .index import NumericIndex
 from .serializer import NumericSerializer
 from .serializer import ObjectSerializer
 from .serializer import TextSerializer
+from .serializer import NullListSerializer
 
 
 class Config(Database):
@@ -16,5 +17,5 @@ class Entries(NumericIndex):
 
 
 class Checkpoints(Database):
-    K = TextSerializer
+    K = NullListSerializer
     V = ObjectSerializer

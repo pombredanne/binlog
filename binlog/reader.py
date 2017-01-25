@@ -12,7 +12,26 @@ class Reader:
         self.connection = connection
         self.name = name
         self.registry = registry
+        self._parent = None
+
         self.closed = False
+
+    @property
+    def parent(self):
+        if self.name is None:
+            return None
+
+        if self._parent is None:
+            parent_name = '.'.join(self.name.split('.')[:-1])
+            if parent_name:
+                self._parent = self.connection.reader(parent_name)
+            else:
+                self._parent = self
+
+        if self._parent is self:
+            return None
+        else:
+            return self._parent
 
     def is_acked(self, entry):
         if entry.saved and self.registry is not None and \
@@ -28,6 +47,9 @@ class Reader:
         if self.registry:
             self.connection.save_registry(self.name, self.registry)
 
+        if self.parent is not None:
+            self.parent.commit()
+
     def __enter__(self):
         return self
 
@@ -41,6 +63,12 @@ class Reader:
             raise ValueError("Entry must be saved first")
         else:
             return self.registry.add(entry.pk)
+
+    def recursive_ack(self, entry):
+        if self.parent is None:
+            return self.ack(entry)
+        else:
+            return self.parent.recursive_ack(entry) and self.ack(entry)
 
     def _iter(self, cursor_attr, *args, start=None, **kwargs):
         with MaskException(lmdb.ReadonlyError, StopIteration):

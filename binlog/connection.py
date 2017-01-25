@@ -1,6 +1,7 @@
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import reduce
+from itertools import islice
 from pathlib import Path
 import operator as op
 
@@ -167,9 +168,18 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         return Reader(self, name, registry)
 
     def register_reader(self, name):
+        path = name.split('.')
+
         with self.readers(write=True) as res:
             with Checkpoints.cursor(res) as cursor:
-                return cursor.put(name, Registry(), overwrite=False)
+                result = cursor.put(name, Registry(), overwrite=False)
+
+        parents = path[:-1]
+        if not parents:
+            return result
+        else:
+            parents_result = self.register_reader('.'.join(parents))
+            return result or parents_result
 
     @MaskException(lmdb.ReadonlyError, ReaderDoesNotExist)
     def unregister_reader(self, name):
@@ -210,19 +220,26 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                         self._unindex(res, entry)
                     return success
 
-    def purge(self):
+    def purge(self, chunk_size=1000):
+        if chunk_size < 1:
+            raise ValueError("chunk_size must be greater than 0")
+
         registries = [self.reader(name).registry
                       for name in self.list_readers()]
-        removed = errors = 0
+        removed = not_found = 0
         if registries:
-            common_acked = reduce(op.and_, registries)
-            with self.data(write=True) as res:
-                with Entries.cursor(res) as cursor:
-                    for pk in common_acked:
-                        value = cursor.pop(pk)
-                        if value is not None:
-                            removed += 1
-                            self._unindex(res, self.model(**value))
-                        else:
-                            errors = 0
-        return removed, errors
+            common_acked = iter(reduce(op.and_, registries))
+            idx = chunk_size
+            while idx == chunk_size:
+                idx = 0
+                it = islice(common_acked, 0, chunk_size)
+                with self.data(write=True) as res:
+                    with Entries.cursor(res) as cursor:
+                        for idx, pk in enumerate(it, 1):
+                            value = cursor.pop(pk)
+                            if value is not None:
+                                removed += 1
+                                self._unindex(res, self.model(**value))
+                            else:
+                                not_found += 1
+        return removed, not_found

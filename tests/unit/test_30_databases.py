@@ -6,11 +6,12 @@ from binlog.databases import Checkpoints
 from binlog.serializer import NumericSerializer
 from binlog.serializer import ObjectSerializer
 from binlog.serializer import TextSerializer
+from binlog.serializer import NullListSerializer
 
 
 @pytest.mark.parametrize(
     "database,key_serializer,value_serializer",
-    [(Checkpoints, TextSerializer, ObjectSerializer),
+    [(Checkpoints, NullListSerializer, ObjectSerializer),
      (Config, TextSerializer, ObjectSerializer),
      (Entries, NumericSerializer, ObjectSerializer)])
 def test_database_serializers(database, key_serializer, value_serializer):

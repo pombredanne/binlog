@@ -5,7 +5,7 @@ from string import ascii_letters
 
 from binlog.serializer import NumericSerializer
 from binlog.serializer import ObjectSerializer
-from binlog.serializer import StringListSerializer
+from binlog.serializer import NullListSerializer
 from binlog.serializer import TextSerializer
 
 
@@ -14,26 +14,23 @@ from binlog.serializer import TextSerializer
     [(NumericSerializer, integers(min_value=0, max_value=2**64-1)),
      (TextSerializer, text(min_size=0, max_size=511)),
      (ObjectSerializer, dictionaries(text(), text())),
-     (StringListSerializer, lists(text(min_size=1,
-                                       alphabet=ascii_letters),
-                                  min_size=1)) ])
+     (NullListSerializer, text(min_size=1,
+                               alphabet=ascii_letters + '.')) ])
 @given(data())
 def test_serializers_conversion(serializer, strategy, data): 
     python_value = expected = data.draw(strategy) 
-    current = serializer.python_value(memoryview(serializer.db_value(python_value)))
+    current = serializer.python_value(
+        memoryview(serializer.db_value(python_value)))
 
     assert current == expected
 
 
-def test_stringlistserializer_invalid_values():
+def test_nulllistserializer_invalid_values():
     with pytest.raises(ValueError):
-        StringListSerializer.db_value([])
+        NullListSerializer.db_value('')
 
     with pytest.raises(ValueError):
-        StringListSerializer.db_value([''])
+        NullListSerializer.db_value('test\0')
 
     with pytest.raises(ValueError):
-        StringListSerializer.db_value(['test\0'])
-
-    with pytest.raises(ValueError):
-        StringListSerializer.db_value(['ñoño'])
+        NullListSerializer.db_value('ñoño')

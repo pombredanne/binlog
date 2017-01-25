@@ -28,17 +28,16 @@ class ObjectSerializer(Serializer):
     db_value = staticmethod(pickle.dumps)
 
 
-class StringListSerializer(Serializer):
+class NullListSerializer(Serializer):
     @staticmethod
     def python_value(value):
-        return [x.decode('utf-8') for x in value.tobytes().split(b'\0')]
+        return value.tobytes().replace(b"\0", b".").decode('ascii')
 
     @staticmethod
     def db_value(value):
         try:
             assert value
-            assert all(bool(v) for v in value)
-            assert not any('\0' in v for v in value)
-            return b'\0'.join(x.encode('ascii') for x in value)
+            assert '\0' not in value
+            return value.encode('ascii').replace(b'.', b'\0')
         except (AssertionError, UnicodeEncodeError) as exc:
             raise ValueError from exc
