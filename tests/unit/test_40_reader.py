@@ -4,7 +4,6 @@ import pytest
 
 from binlog.model import Model
 from binlog.exceptions import ReaderDoesNotExist
-from binlog.databases import Entries
 
 
 def test_readers_environment_does_not_exist(tmpdir):
@@ -79,113 +78,6 @@ def test_context_manager_closing(tmpdir):
         with db.reader('readername') as reader:
             assert not reader.closed
         assert reader.closed
-
-
-def test_reader_reads(tmpdir):
-    with Model.open(tmpdir) as db:
-        entries = [Model(idx=i) for i in range(10)]
-        db.bulk_create(entries)
-
-        db.register_reader('myreader')
-        with db.reader('myreader') as reader:
-            for current, expected in zip_longest(entries, reader):
-                assert current == expected
-
-
-def test_reader_reversed_read(tmpdir):
-    with Model.open(tmpdir) as db:
-        entries = [Model(idx=i) for i in range(10)]
-        db.bulk_create(entries)
-
-        db.register_reader('myreader')
-        with db.reader('myreader') as reader:
-            for current, expected in zip_longest(reversed(entries),
-                                                 reversed(reader)):
-                assert current == expected
-
-
-def test_empty_iterator(tmpdir):
-    with Model.open(tmpdir) as db:
-        # Create and delete one register
-        db.create(test="data")
-        with db.data(write=True) as res:
-            with Entries.cursor(res) as cursor:
-                assert cursor.pop(0)
-
-        db.register_reader('myreader')
-        with db.reader('myreader') as reader:
-            for _ in reader:
-                assert False, "SHOULD be empty"
-
-
-def test_empty_reverse_iterator(tmpdir):
-    with Model.open(tmpdir) as db:
-        db.register_reader('myreader')
-
-        # Create and delete one register
-        db.create(test="data")
-        with db.data(write=True) as res:
-            with Entries.cursor(res) as cursor:
-                assert cursor.pop(0)
-
-        with db.reader('myreader') as reader:
-            for _ in reversed(reader):
-                assert False, "SHOULD be empty"
-
-
-def test_reader_index(tmpdir):
-    with Model.open(tmpdir) as db:
-        entries = [Model(idx=i) for i in range(10)]
-        db.bulk_create(entries)
-
-        db.register_reader('myreader')
-        with db.reader('myreader') as reader:
-            for e in entries:
-                assert e == reader[e['idx']]
-
-
-def test_reader_non_integer(tmpdir):
-    with Model.open(tmpdir) as db:
-        db.register_reader('myreader')
-        with db.reader('myreader') as reader:
-            with pytest.raises(TypeError):
-                reader[None]
-
-
-def test_reader_unknown_index(tmpdir):
-    with Model.open(tmpdir) as db:
-        db.create(test='test')
-
-        db.register_reader('myreader')
-        with db.reader('myreader') as reader:
-            with pytest.raises(IndexError):
-                reader[1]
-
-
-def test_reader_unknown_negative_index(tmpdir):
-    with Model.open(tmpdir) as db:
-        db.create(test='test')
-
-        db.register_reader('myreader')
-        with db.reader('myreader') as reader:
-            with pytest.raises(IndexError):
-                reader[-2]
-
-
-def test_reader_negative_index(tmpdir):
-    with Model.open(tmpdir) as db:
-        entries = [Model(idx=i) for i in range(10)]
-        db.bulk_create(entries)
-
-        db.register_reader('myreader')
-        with db.reader('myreader') as reader:
-            positive_indexes = range(len(entries))
-            negative_indexes = [(1 + i) * -1
-                                for i in reversed(positive_indexes)]
-
-
-            for pos, neg in zip(positive_indexes, negative_indexes):
-                assert reader[pos] == reader[neg]
 
 
 def test_ReadonlyError_is_masked(tmpdir):
