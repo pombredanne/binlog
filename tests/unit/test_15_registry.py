@@ -1,5 +1,4 @@
 import random
-from collections import deque
 
 from hypothesis import given, example
 from hypothesis import strategies as st
@@ -18,7 +17,7 @@ def test_registry_initialization():
 
     r = Registry()
 
-    assert r.acked == deque()
+    assert r.acked == list()
 
 
 @given(data=st.integers(min_value=0))
@@ -28,7 +27,7 @@ def test_registry_add_starts_range(data):
     r = Registry()
 
     assert r.add(data)
-    assert r.acked == deque([(data, data)])
+    assert r.acked == list([(data, data)])
 
 
 def test_registry_add_only_accept_integers():
@@ -169,49 +168,49 @@ def test_registries_support_union(data_a, data_b):
 def test_registries_support_union__bigger_segment():
     from binlog.registry import Registry, S
 
-    registry_a = Registry(acked=deque([S(0, 10)]))
-    registry_b = Registry(acked=deque([S(5, 8)]))
+    registry_a = Registry(acked=list([S(0, 10)]))
+    registry_b = Registry(acked=list([S(5, 8)]))
 
     registry_x1 = registry_a | registry_b
     registry_x2 = registry_b | registry_a
 
-    assert registry_x1.acked == registry_x2.acked == deque([S(0, 10)])
+    assert registry_x1.acked == registry_x2.acked == list([S(0, 10)])
 
 
 def test_registries_support_union__overlap_segments():
     from binlog.registry import Registry, S
 
-    registry_a = Registry(acked=deque([S(0, 10)]))
-    registry_b = Registry(acked=deque([S(5, 20)]))
+    registry_a = Registry(acked=list([S(0, 10)]))
+    registry_b = Registry(acked=list([S(5, 20)]))
 
     registry_x1 = registry_a | registry_b
     registry_x2 = registry_b | registry_a
 
-    assert registry_x1.acked == registry_x2.acked == deque([S(0, 20)])
+    assert registry_x1.acked == registry_x2.acked == list([S(0, 20)])
 
 
 def test_registries_support_union__start_and_end_are_consecutive():
     from binlog.registry import Registry, S
 
-    registry_a = Registry(acked=deque([S(0, 10)]))
-    registry_b = Registry(acked=deque([S(11, 20)]))
+    registry_a = Registry(acked=list([S(0, 10)]))
+    registry_b = Registry(acked=list([S(11, 20)]))
 
     registry_x1 = registry_a | registry_b
     registry_x2 = registry_b | registry_a
 
-    assert registry_x1.acked == registry_x2.acked == deque([S(0, 20)])
+    assert registry_x1.acked == registry_x2.acked == list([S(0, 20)])
 
 
 def test_registries_support_union_one_point():
     from binlog.registry import Registry, S
 
-    registry_a = Registry(acked=deque([S(0, 0)]))
+    registry_a = Registry(acked=list([S(0, 0)]))
     registry_b = Registry()
 
     registry_x1 = registry_a | registry_b
     registry_x2 = registry_b | registry_a
 
-    assert registry_x1.acked == registry_x2.acked == deque([S(0, 0)])
+    assert registry_x1.acked == registry_x2.acked == list([S(0, 0)])
 
 
 @given(data_a=st.sets(st.integers(min_value=0, max_value=20)),
@@ -245,49 +244,49 @@ def test_registries_support_intersection(data_a, data_b):
 def test_registries_support_intersection__bigger_segment():
     from binlog.registry import Registry, S
 
-    registry_a = Registry(acked=deque([S(0, 10)]))
-    registry_b = Registry(acked=deque([S(5, 8)]))
+    registry_a = Registry(acked=list([S(0, 10)]))
+    registry_b = Registry(acked=list([S(5, 8)]))
 
     registry_x1 = registry_a & registry_b
     registry_x2 = registry_b & registry_a
 
-    assert registry_x1.acked == registry_x2.acked == deque([S(5, 8)])
+    assert registry_x1.acked == registry_x2.acked == list([S(5, 8)])
 
 
 def test_registries_support_intersection__overlap_segments():
     from binlog.registry import Registry, S
 
-    registry_a = Registry(acked=deque([S(0, 10)]))
-    registry_b = Registry(acked=deque([S(5, 20)]))
+    registry_a = Registry(acked=list([S(0, 10)]))
+    registry_b = Registry(acked=list([S(5, 20)]))
 
     registry_x1 = registry_a & registry_b
     registry_x2 = registry_b & registry_a
 
-    assert registry_x1.acked == registry_x2.acked == deque([S(5, 10)])
+    assert registry_x1.acked == registry_x2.acked == list([S(5, 10)])
 
 
 def test_registries_support_intersection__start_and_end_are_consecutive():
     from binlog.registry import Registry, S
 
-    registry_a = Registry(acked=deque([S(0, 10)]))
-    registry_b = Registry(acked=deque([S(11, 20)]))
+    registry_a = Registry(acked=list([S(0, 10)]))
+    registry_b = Registry(acked=list([S(11, 20)]))
 
     registry_x1 = registry_a & registry_b
     registry_x2 = registry_b & registry_a
 
-    assert registry_x1.acked == registry_x2.acked == deque([])
+    assert registry_x1.acked == registry_x2.acked == list([])
 
 
 def test_registries_support_intersection__same_point():
     from binlog.registry import Registry, S
 
-    registry_a = Registry(acked=deque([S(0, 0)]))
-    registry_b = Registry(acked=deque([S(0, 0)]))
+    registry_a = Registry(acked=list([S(0, 0)]))
+    registry_b = Registry(acked=list([S(0, 0)]))
 
     registry_x1 = registry_a & registry_b
     registry_x2 = registry_b & registry_a
 
-    assert registry_x1.acked == registry_x2.acked == deque([S(0, 0)])
+    assert registry_x1.acked == registry_x2.acked == list([S(0, 0)])
 
 
 @given(points=st.sets(st.integers(min_value=0,

@@ -26,13 +26,13 @@ class MaskException:
 def popminleft(a, b):
     if a and b:
         if a[0].L <= b[0].L:
-            return a.popleft()
+            return a.pop(0)
         else:
-            return b.popleft()
+            return b.pop(0)
     elif a:
-        return a.popleft()
+        return a.pop(0)
     elif b:
-        return b.popleft()
+        return b.pop(0)
     else:
         return None
 

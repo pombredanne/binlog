@@ -1,5 +1,5 @@
 from bisect import insort, bisect_left
-from collections import deque, namedtuple
+from collections import namedtuple
 from itertools import count
 
 from .util import popminleft
@@ -15,7 +15,7 @@ class S(namedtuple('Segment', ['L', 'R'])):
 class Registry:
     def __init__(self, acked=None):
         if acked is None:
-            self.acked = deque()
+            self.acked = []
         else:
             self.acked = acked
 
@@ -86,7 +86,7 @@ class Registry:
         a_ackd, b_ackd = self.acked.copy(), other.acked.copy()
 
         current_1 = current_2 = None
-        new_acked = deque()
+        new_acked = []
         while a_ackd or b_ackd:
 
             if current_1 is None:
@@ -115,7 +115,7 @@ class Registry:
         a_ackd, b_ackd = self.acked.copy(), other.acked.copy()
 
         current_1 = current_2 = None
-        new_acked = deque()
+        new_acked = []
         while a_ackd or b_ackd:
             if current_1 is None:
                 current_1 = popminleft(a_ackd, b_ackd)
