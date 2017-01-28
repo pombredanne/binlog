@@ -1,15 +1,133 @@
 from bisect import insort, bisect_left
 from collections import namedtuple
-from itertools import count
+from itertools import count, cycle
+import enum
 
-from .util import popminleft
+from .abstract import IterSeek
+from .util import popminleft, consume
 
 
-class S(namedtuple('Segment', ['L', 'R'])):
+class Direction(enum.Enum):
+    #: Forward
+    F = 1
+    #: Backward
+    B = -1
+
+
+class S(namedtuple('Segment', ('L', 'R'))):
+    def __contains__(self, value):
+        return self.L <= value <= self.R
+
     def __and__(self, other):
         L = max(self.L, other.L)
         R = min(self.R, other.R)
         return S(L, R) if L<=R else None
+
+    def forward(self):
+        return iter(range(self.L, self.R + 1))
+
+    def backward(self):
+        return iter(range(self.R, self.L - 1, -1))
+
+
+class RegistryIterSeek(IterSeek):
+    def __init__(self, registry, direction=Direction.F):
+        self.registry = registry
+        self.pos = None
+        self.direction = direction
+
+        self.last = None
+
+        self.last_s = None
+        self._curr_s = None
+
+        if self.registry.acked:
+            self.segments = zip(consume(self.walk_segments(),
+                                        len(registry.acked) - 1),
+                                self.walk_segments())
+        else:
+            self.segments = None
+
+    @property
+    def curr_s(self):
+        return self._curr_s
+
+    @curr_s.setter
+    def curr_s(self, value):
+        self._curr_s = value
+        if isinstance(value, S):
+            if self.direction is Direction.F:
+                self._curr_s._iter = value.forward()
+            else:
+                self._curr_s._iter = value.backward()
+
+    def walk_segments(self):
+        if self.direction == Direction.F:
+            return cycle(self.registry.acked)
+        else:
+            return cycle(reversed(self.registry.acked))
+
+    def __next__(self):
+        if not self.registry.acked:
+            raise StopIteration
+        elif self.pos is not None:
+            pos, self.pos = self.pos, None
+
+            if ((self.direction is Direction.F
+                 and pos > self.registry.acked[-1].R)
+                or (self.direction is Direction.B
+                    and pos < self.registry.acked[0].L)):
+                raise StopIteration
+            else:
+                for (self.last_s,  # pragma: no branch
+                     self.curr_s) in self.segments:
+                    # Ex: p = 10
+                    if pos in self.curr_s:
+                        # Sc(1 -- <p> -- 20)
+                        if self.direction is Direction.F:
+                            self.curr_s = S(pos, self.curr_s.R)
+                        else:
+                            self.curr_s = S(self.curr_s.L, pos)
+                        return self.__next__()
+                    elif self.direction is Direction.F:
+                        # Sl < Sc < Sn | Except on edges
+                        if self.last_s.R < pos < self.curr_s.L:
+                            # Sl(1, 9) -- p> -- Sc(11, 20)
+                            return self.__next__()
+                        elif (pos not in self.last_s
+                              and self.last_s.R > pos < self.curr_s.L
+                              and self.last_s.R > self.curr_s.L):
+                            # Sl(190, 200) -- p> -- Sc(20, 180)
+                            return self.__next__()
+                    else:
+                        # Sl > Sc > Sn | Except on edges
+                        if self.last_s.L > pos > self.curr_s.R:
+                            return self.__next__()
+                        elif (pos not in self.last_s 
+                            and self.last_s.L < pos > self.curr_s.R
+                            and self.last_s.L < self.curr_s.R):
+                            return self.__next__()
+        else:
+            if self.curr_s is None:
+                self.last_s, self.curr_s = next(self.segments)
+
+            try:
+                n = next(self.curr_s._iter)
+            except StopIteration:
+                self.curr_s = None
+                return self.__next__()
+            else:
+                if self.last is not None:
+                    if self.direction is Direction.F and n < self.last:
+                        raise StopIteration
+                    elif self.direction is Direction.B and n > self.last:
+                        raise StopIteration
+                self.last = n
+                return n
+
+    def seek(self, pos):
+        self.pos = pos
+        self.last = None
 
 
 class Registry:
@@ -35,12 +153,12 @@ class Registry:
             return False
         else:
             for i, segment in enumerate(self.acked):
-                left, right = segment 
+                left, right = segment.L, segment.R 
 
                 if right == idx - 1:
                     try:
                         if self.acked[i + 1].L == idx + 1:
-                            _, right = self.acked[i + 1]
+                            right = self.acked[i + 1].R
                             del self.acked[i + 1]
                             self.acked[i] = S(left, right)
                             return True
@@ -65,10 +183,12 @@ class Registry:
         idx = bisect_left(self.acked, (value, value))
 
         try:
-            left, right = self.acked[idx]
+            segment = self.acked[idx]
+            left, right = segment.L, segment.R
         except IndexError:
             try:
-                left, right = self.acked[idx - 1]
+                segment = self.acked[idx - 1]
+                left, right = segment.L, segment.R
             except IndexError:  # pragma: no cover
                 return False
             else:
@@ -77,7 +197,8 @@ class Registry:
             if left <= value <= right:
                 return True
             elif idx > 0:
-                left, right = self.acked[idx - 1]
+                segment = self.acked[idx - 1]
+                left, right = segment.L, segment.R
                 return left <= value <= right
             else:
                 return False

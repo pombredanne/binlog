@@ -1,4 +1,6 @@
 from functools import wraps
+from itertools import islice
+import collections
 
 
 class MaskException:
@@ -40,3 +42,21 @@ def popminleft(a, b):
 def cmp(a, b):                                                              
     """ http://codegolf.stackexchange.com/a/49779 """                       
     return (a > b) - (a < b)
+
+
+def consume(iterator, n):  # pragma: no cover
+    """
+    Advance the iterator n-steps ahead. If n is none, consume entirely.
+
+    https://docs.python.org/3.6/library/itertools.html#itertools-recipes
+
+    """
+    # Use functions that consume iterators at C speed.
+    if n is None:
+        # feed the entire iterator into a zero-length deque
+        collections.deque(iterator, maxlen=0)
+    else:
+        # advance to the empty slice starting at position n
+        next(islice(iterator, n, n), None)
+
+    return iterator

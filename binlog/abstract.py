@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from contextlib import contextmanager
 import abc
 
@@ -37,4 +38,10 @@ class Serializer(metaclass=abc.ABCMeta):
     @staticmethod
     @abc.abstractmethod
     def db_value(self, value):  # pragma: no cover
+        pass
+
+
+class IterSeek(Iterator):
+    @abc.abstractmethod
+    def seek(self, pos):  # pragma: no cover
         pass
