@@ -28,7 +28,8 @@ class TextSerializer(Serializer):
 
 class ObjectSerializer(Serializer):
     python_value = staticmethod(pickle.loads)
-    db_value = staticmethod(pickle.dumps)
+    db_value = staticmethod(partial(pickle.dumps,
+                                    protocol=pickle.HIGHEST_PROTOCOL))
 
 
 class NullListSerializer(Serializer):
