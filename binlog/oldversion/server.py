@@ -5,7 +5,7 @@ import os
 import signal
 import sys
 
-from .writer import TDSWriter
+from binlog.oldversion.writer import TDSWriter
 
 
 logging.basicConfig(level=logging.INFO)

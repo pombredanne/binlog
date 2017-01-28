@@ -1,7 +1,7 @@
 from bisect import insort
 from copy import deepcopy
 
-from .binlog import Record
+from binlog.oldversion.binlog import Record
 
 
 class Register:

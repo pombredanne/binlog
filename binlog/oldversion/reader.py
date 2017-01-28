@@ -4,10 +4,10 @@ import pickle
 from acidfile import ACIDFile
 from bsddb3 import db
 
-from .binlog import TDSBinlog, CDSBinlog, Record
-from .constants import LOGINDEX_NAME, CHECKPOINT_DIR
-from .cursor import Cursor
-from .register import Register
+from binlog.oldversion.binlog import TDSBinlog, CDSBinlog, Record
+from binlog.oldversion.constants import LOGINDEX_NAME, CHECKPOINT_DIR
+from binlog.oldversion.cursor import Cursor
+from binlog.oldversion.register import Register
 
 
 class Reader:
