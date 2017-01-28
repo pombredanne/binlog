@@ -57,8 +57,16 @@ class Reader:
         self.close()
 
     def ack(self, entry):
+        # FIXME: import on top, fix recursive import
+        from .model import Model
+
         if self.registry is None:
             raise RuntimeError("Cannot ACK events on anonymous reader.")
+
+        if isinstance(entry, int):
+            return self.registry.add(entry)
+        elif not isinstance(entry, Model):
+            raise TypeError("ACK accepts either pk or model instance")
         elif not entry.saved:
             raise ValueError("Entry must be saved first")
         else:

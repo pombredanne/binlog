@@ -45,3 +45,21 @@ def test_ack_on_anonymous_reader(tmpdir):
         with db.reader() as reader:
             with pytest.raises(RuntimeError):
                 reader.ack(reader[0])
+
+
+def test_can_ack_with_pk(tmpdir):
+    with Model.open(tmpdir) as db:
+        entry = db.create(test='data')
+
+        db.register_reader('myreader')
+        with db.reader('myreader') as reader:
+            reader.ack(0)
+            assert 0 in reader.registry
+
+
+def test_dont_accept_other_types(tmpdir):
+    with Model.open(tmpdir) as db:
+        db.register_reader('myreader')
+        with db.reader('myreader') as reader:
+            with pytest.raises(TypeError):
+                reader.ack({})
