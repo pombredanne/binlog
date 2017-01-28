@@ -45,7 +45,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
     def _gen_path(self, metaname):
         basename = Path(str(self.path))
-        dirname = Path(self.model._meta['data_env_directory'])
+        dirname = Path(self.model._meta[metaname])
         return str(basename / dirname)
 
     def _get_index_name(self, name):
@@ -93,13 +93,10 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         for index_name, index in self.model._indexes.items():
             db_name = self._get_index_name(index_name)
             with index.cursor(res, db_name=db_name) as cursor:
-                try:
-                    key = entry[index_name]
-                except KeyError as exc:
-                    if index.mandatory:
-                        raise ValueError(
-                            "value %s is mandatory" % index_name) from exc
-                else:
+                key = entry.get(index_name)
+                if index.mandatory and key is None:
+                    raise ValueError("value %s is mandatory" % index_name)
+                elif key is not None:
                     value = entry.pk
                     cursor.put(key, value, overwrite=True, dupdata=True)
 
