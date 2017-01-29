@@ -55,7 +55,10 @@ class IterSeek(Iterator):
     def seek(self, pos):  # pragma: no cover
         pass
 
-
     def __and__(self, other):
         from .operations import ANDIterSeek
         return ANDIterSeek(self, other)
+
+    def __or__(self, other):
+        from .operations import ORIterSeek
+        return ORIterSeek(self, other)
