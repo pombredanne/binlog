@@ -4,6 +4,9 @@ from hypothesis import given, assume, example
 from hypothesis import strategies as st
 import pytest
 
+from binlog.registry import Registry, S
+from binlog.abstract import Direction
+
 
 def test_registryiterseek_exists():
     try:
@@ -16,7 +19,7 @@ def test_registryiterseek_exists():
 # FORWARD
 #
 def test_registryiterseek_forward_empty_unset():
-    from binlog.registry import Registry, RegistryIterSeek
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry())
     assert not list(r)
@@ -24,7 +27,7 @@ def test_registryiterseek_forward_empty_unset():
 
 @given(seek_to=st.integers(min_value=0, max_value=2**64-1))
 def test_registryiterseek_forward_empty_seek(seek_to):
-    from binlog.registry import Registry, RegistryIterSeek
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry())
     r.seek(seek_to)
@@ -36,7 +39,7 @@ def test_registryiterseek_forward_empty_seek(seek_to):
 def test_registryiterseek_forward_onesegment_unset(a, b):
     assume(len(set([a, b])) == 2)
 
-    from binlog.registry import Registry, RegistryIterSeek, S
+    from binlog.registry import RegistryIterSeek
 
     a, b = sorted([a, b])
 
@@ -52,7 +55,7 @@ def test_registryiterseek_forward_onesegment_seek(a, b, seeks):
     assume(len(set([a, b])) == 2)
     a, b = sorted([a, b])
 
-    from binlog.registry import Registry, RegistryIterSeek, S
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry([S(a, b)]))
 
@@ -78,7 +81,7 @@ def test_registryiterseek_forward_twosegments_unset(a, b, c, d):
     a, b, c, d = sorted([a, b, c, d])
     assume(b + 1 < c)
 
-    from binlog.registry import Registry, RegistryIterSeek, S
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry([S(a, b), S(c, d)]))
 
@@ -95,7 +98,7 @@ def test_registryiterseek_forward_twosegments_seek(a, b, c, d, seeks):
     a, b, c, d = sorted([a, b, c, d])
     assume(b + 1 < c)
 
-    from binlog.registry import Registry, RegistryIterSeek, S
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry([S(a, b), S(c, d)]))
 
@@ -125,7 +128,7 @@ def test_registryiterseek_forward_threesegments_unset(a, b, c, d, e, f):
     a, b, c, d, e, f = sorted([a, b, c, d, e, f])
     assume(b + 1 < c and d + 1 < e)
 
-    from binlog.registry import Registry, RegistryIterSeek, S
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry([S(a, b), S(c, d), S(e, f)]))
 
@@ -144,7 +147,7 @@ def test_registryiterseek_forward_threesegments_seek(a, b, c, d, e, f, seeks):
     a, b, c, d, e, f = sorted([a, b, c, d, e, f])
     assume(b + 1 < c and d + 1 < e)
 
-    from binlog.registry import Registry, RegistryIterSeek, S
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry([S(a, b), S(c, d), S(e, f)]))
 
@@ -168,7 +171,7 @@ def test_registryiterseek_forward_threesegments_seek(a, b, c, d, e, f, seeks):
 # BACKWARD
 #
 def test_registryiterseek_backward_empty_unset():
-    from binlog.registry import Registry, RegistryIterSeek, Direction
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry(), direction=Direction.B)
     assert not list(r)
@@ -176,7 +179,7 @@ def test_registryiterseek_backward_empty_unset():
 
 @given(seek_to=st.integers(min_value=0, max_value=2**64-1))
 def test_registryiterseek_backward_empty_seek(seek_to):
-    from binlog.registry import Registry, RegistryIterSeek, Direction
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry(), direction=Direction.B)
     r.seek(seek_to)
@@ -189,7 +192,7 @@ def test_registryiterseek_backward_onesegment_unset(a, b):
     assume(len(set([a, b])) == 2)
     a, b = sorted([a, b])
 
-    from binlog.registry import Registry, RegistryIterSeek, S, Direction
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry([S(a, b)]), direction=Direction.B)
 
@@ -203,7 +206,7 @@ def test_registryiterseek_backward_onesegment_seek(a, b, seeks):
     assume(len(set([a, b])) == 2)
     a, b = sorted([a, b])
 
-    from binlog.registry import Registry, RegistryIterSeek, S, Direction
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry([S(a, b)]), direction=Direction.B)
 
@@ -229,7 +232,7 @@ def test_registryiterseek_backward_twosegments_unset(a, b, c, d):
     a, b, c, d = sorted([a, b, c, d])
     assume(b + 1 < c)
 
-    from binlog.registry import Registry, RegistryIterSeek, S, Direction
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry([S(a, b), S(c, d)]), direction=Direction.B)
 
@@ -247,7 +250,7 @@ def test_registryiterseek_backward_twosegments_seek(a, b, c, d, seeks):
     a, b, c, d = sorted([a, b, c, d])
     assume(b + 1 < c)
 
-    from binlog.registry import Registry, RegistryIterSeek, S, Direction
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry([S(a, b), S(c, d)]), direction=Direction.B)
 
@@ -277,7 +280,7 @@ def test_registryiterseek_backward_threesegments_unset(a, b, c, d, e, f):
     a, b, c, d, e, f = sorted([a, b, c, d, e, f])
     assume(b + 1 < c and d + 1 < e)
 
-    from binlog.registry import Registry, RegistryIterSeek, S, Direction
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry([S(a, b), S(c, d), S(e, f)]),
                          direction=Direction.B)
@@ -299,7 +302,7 @@ def test_registryiterseek_backward_threesegments_seek(a, b, c, d, e, f, seeks):
     a, b, c, d, e, f = sorted([a, b, c, d, e, f])
     assume(b + 1 < c and d + 1 < e)
 
-    from binlog.registry import Registry, RegistryIterSeek, S, Direction
+    from binlog.registry import RegistryIterSeek
 
     r = RegistryIterSeek(Registry([S(a, b), S(c, d), S(e, f)]),
                          direction=Direction.B)

@@ -1,8 +1,14 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 import abc
+import enum
 
-from .cursor import CursorProxy
+
+class Direction(enum.Enum):
+    #: Forward
+    F = 1
+    #: Backward
+    B = -1
 
 
 class Database(metaclass=abc.ABCMeta):
@@ -23,10 +29,13 @@ class Database(metaclass=abc.ABCMeta):
 
     @classmethod
     @contextmanager
-    def cursor(cls, res, db_name=None):
-        db_handler = cls.get_db_handler(res, db_name)
+    def cursor(cls, res, db_name=None, direction=Direction.F):
+        from .cursor import CursorProxy
+
+        db_name = cls.__name__.lower() if db_name is None else db_name
+        db_handler = res.db.get(db_name)
         with res.txn.cursor(db_handler) as cursor:
-            yield CursorProxy(cls, res, cursor, db_name)
+            yield CursorProxy(cls, res, cursor, db_name, direction=direction)
 
 
 class Serializer(metaclass=abc.ABCMeta):

@@ -1,17 +1,9 @@
 from bisect import insort, bisect_left
 from collections import namedtuple
 from itertools import count, cycle
-import enum
 
-from .abstract import IterSeek
+from .abstract import IterSeek, Direction
 from .util import popminleft, consume
-
-
-class Direction(enum.Enum):
-    #: Forward
-    F = 1
-    #: Backward
-    B = -1
 
 
 class S(namedtuple('Segment', ('L', 'R'))):
