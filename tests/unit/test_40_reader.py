@@ -122,3 +122,52 @@ def test_reader_filter_exact_multiple(tmpdir):
                                     [x for x in range(0, 100)
                                      if x % 3 == x % 5 == 0]):
                 assert a.pk == b
+
+
+def test_reader_filter_exact_multiple_index(tmpdir):
+    from binlog.index import NumericIndex
+
+    class MyModel(Model):
+        fizz = NumericIndex(mandatory=True)
+        buzz = NumericIndex(mandatory=True)
+
+    with MyModel.open(tmpdir) as db:
+        entries = [Model(idx=i,
+                         fizz=int(i % 3 == 0),
+                         buzz=int(i % 5 == 0)) for i in range(100)]
+
+        assert db.bulk_create(entries) == len(entries)
+
+        with db.reader() as r:
+            current = r.filter(fizz=1, buzz=1)
+            expected = [x for x in range(0, 100) if x % 3 == x % 5 == 0]
+
+            for a, b in zip_longest(current, expected):
+                if a is None or b is None:
+                    assert False, (a, b)
+                else:
+                    assert a.pk == b
+
+
+def test_reader_filter_exact_index_and_nonindex(tmpdir):
+    from binlog.index import NumericIndex
+
+    class MyModel(Model):
+        fizz = NumericIndex(mandatory=True)
+
+    with MyModel.open(tmpdir) as db:
+        entries = [Model(idx=i,
+                         fizz=int(i % 3 == 0),
+                         buzz=int(i % 5 == 0)) for i in range(100)]
+
+        assert db.bulk_create(entries) == len(entries)
+
+        with db.reader() as r:
+            current = r.filter(fizz=1, buzz=1)
+            expected = [x for x in range(0, 100) if x % 3 == x % 5 == 0]
+
+            for a, b in zip_longest(current, expected):
+                if a is None or b is None:
+                    assert False, (a, b)
+                else:
+                    assert a.pk == b

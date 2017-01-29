@@ -37,9 +37,15 @@ class CursorProxy(IterSeek):
             self.seeked = False
         elif seeked is False:
             if self.direction is Direction.F:
-                found = self.cursor.next()
+                if self.dupsort:
+                    found = self.cursor.next_dup()
+                else:
+                    found = self.cursor.next()
             else:
-                found = self.cursor.prev()
+                if self.dupsort:
+                    found = self.cursor.prev_dup()
+                else:
+                    found = self.cursor.prev()
         else:
             if self.can_set is False:
                 raise StopIteration
@@ -51,26 +57,14 @@ class CursorProxy(IterSeek):
             raise StopIteration
         else:
             raw_key, raw_value = self.cursor.item()
-            if raw_value == b'':
-                raise StopIteration
-            elif raw_key == b'':
-                if self.dupsort:
-                    # I think this is a bug in pylmdb
-                    key = self._dupkey
-                else:  # pragma: no branch
-                    raise RuntimeError("key error")
-            else:
-                key = self._from_key(raw_key)
-
             if self.dupsort:
-                # We compare key to seeked_key to find if we are out
-                if key != self._dupkey:
+                if raw_value is b'':
                     raise StopIteration
-                else:
-                    return self._from_value(raw_value)
+                return self._from_value(raw_value)
             else:
-                # No need to compare keys
-                return (key, self._from_value(raw_value))
+                if raw_key is b'':
+                    raise StopIteration
+                return self._from_key(raw_key)
 
 
     @property

@@ -63,15 +63,13 @@ def test_cursorproxy_forward_nonempty_noseek(testenv, dupsort, values):
         with database() as cursor:
             if dupsort:
                 cursor.dupkey = 1
-                assert list(cursor) == [v for _, v in expected]
-            else:
-                assert list(cursor) == expected
+
+            assert list(cursor) == [v for _, v in expected]
 
 
 @pytest.mark.parametrize("dupsort", [True, False])
 @given(values=st.sets(st.integers(min_value=0, max_value=2**64-1), min_size=1),
        seeks=st.sets(st.integers(min_value=0, max_value=2**64-1), min_size=1))
-@example(values=[0], seeks=[0, 256])
 def test_cursorproxy_forward_nonempty_seek(testenv, dupsort, values, seeks):
     values = list(sorted(values))
     if dupsort:
@@ -85,7 +83,7 @@ def test_cursorproxy_forward_nonempty_seek(testenv, dupsort, values, seeks):
                 if dupsort:
                     cursor.put(k - 1, v)
                     cursor.put(k + 1, v)
-                cursor.put(k, v)
+                assert cursor.put(k, v, dupdata=True, overwrite=True)
 
         with database() as cursor:
             if dupsort:
@@ -95,13 +93,38 @@ def test_cursorproxy_forward_nonempty_seek(testenv, dupsort, values, seeks):
                 cursor.seek(s)
                 closer = min([x for x in values if x >= s], default=None)
                 if closer is not None:
-                    if dupsort:
-                        assert list(cursor) == [v for _, v in expected[values.index(closer):]]
-                    else:
-                        assert list(cursor) == expected[values.index(closer):]
+                    assert list(cursor) == [v for _, v in expected[values.index(closer):]]
                 else:
                     assert list(cursor) == []
 
+
+@given(values=st.sets(st.integers(min_value=0, max_value=2**64-1), min_size=1),
+       seeks=st.sets(st.integers(min_value=0, max_value=2**64-1), min_size=1))
+def test_cursorproxy_forward_nonempty_seek__singlekey(testenv, values, seeks):
+    values=[0, 5, 10, 15, 20, 25, 30]
+    seeks=[0, 256, 0]
+    values = list(sorted(values))
+    expected = [(0, k) for k in values]
+
+    with testenv(dupsort=True) as database:
+        with database() as cursor:
+            for k, v in expected:
+                assert cursor.put(k, v, dupdata=True, overwrite=True)
+
+        with database() as cursor:
+            cursor.dupkey = 0
+
+            assert list(cursor)
+            assert not list(cursor)
+
+            for s in list(seeks):
+                cursor.seek(s)
+                closer = min([x for x in values if x >= s], default=None)
+                if closer is not None:
+                    l = [v for _, v in expected[values.index(closer):]]
+                    assert list(cursor) == l
+                else:
+                    assert list(cursor) == []
 
 #
 # BACKWARD
@@ -126,9 +149,8 @@ def test_cursorproxy_backward_nonempty_noseek(testenv, dupsort, values):
         with database(direction=Direction.B) as cursor:
             if dupsort:
                 cursor.dupkey = 1
-                assert list(cursor) == [v for _, v in reversed(expected)]
-            else:
-                assert list(cursor) == list(reversed(expected))
+
+            assert list(cursor) == [v for _, v in reversed(expected)]
 
 
 @pytest.mark.parametrize("dupsort", [True, False])
@@ -157,9 +179,6 @@ def test_cursorproxy_backward_nonempty_seek(testenv, dupsort, values, seeks):
                 cursor.seek(s)
                 closer = max([x for x in values if x <= s], default=None)
                 if closer is not None:
-                    if dupsort:
-                        assert list(cursor) == [v for _, v in expected[values.index(closer)::-1]]
-                    else:
-                        assert list(cursor) == expected[values.index(closer)::-1]
+                    assert list(cursor) == [v for _, v in expected[values.index(closer)::-1]]
                 else:
                     assert list(cursor) == []

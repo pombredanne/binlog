@@ -98,7 +98,11 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                     raise ValueError("value %s is mandatory" % index_name)
                 elif key is not None:
                     value = entry.pk
-                    cursor.put(key, value, overwrite=True, dupdata=True)
+                    if not cursor.put(key,
+                                      value,
+                                      overwrite=True,
+                                      dupdata=True):
+                        raise RuntimeError("Cannot index %s=%s" % (key, value))
 
     def _unindex(self, res, entry):
         for index_name, index in self.model._indexes.items():

@@ -1,10 +1,13 @@
 from itertools import takewhile, islice
+from contextlib import ExitStack
 
 import lmdb
 
+from .abstract import Direction
 from .databases import Entries
 from .serializer import NumericSerializer, ObjectSerializer
 from .util import MaskException, cmp
+from .registry import RegistryIterSeek, Registry
 
 
 class Reader:
@@ -95,21 +98,65 @@ class Reader:
         entry.saved = True
         return entry
 
+    def __iterseek__(self, direction):
+        if self.registry is None:
+            return RegistryIterSeek(~Registry(), direction=direction)
+        else:
+            return RegistryIterSeek(~self.registry, direction=direction)
+
     def __iter__(self):
-        for key, value in self._iter('iternext'):
-            yield self._to_model(key, value)
+        with MaskException(lmdb.ReadonlyError, StopIteration):
+            with self.connection.data(write=False) as res:
+                with Entries.cursor(res) as cursor:
+                    it = cursor & self.__iterseek__(direction=Direction.F)
+                    for pk in it:
+                        try:
+                            yield self[pk]
+                        except IndexError:
+                            pass
 
     def __reversed__(self):
-        for key, value in self._iter('iterprev'):
-            yield self._to_model(key, value)
+        with MaskException(lmdb.ReadonlyError, StopIteration):
+            with self.connection.data(write=False) as res:
+                with Entries.cursor(res, direction=Direction.B) as cursor:
+                    it = cursor & self.__iterseek__(direction=Direction.B)
+                    for pk in it:
+                        try:
+                            yield self[pk]
+                        except IndexError:
+                            pass
 
     def filter(self, **filters):
-        for key, value in self._iter('iternext'):
-            for f_key, f_value in filters.items():
-                if not f_key in value or value[f_key] != f_value:
-                    break
-            else:
-                yield self._to_model(key, value)
+        with MaskException(lmdb.ReadonlyError, StopIteration):
+            with self.connection.data(write=False) as res:
+                with Entries.cursor(res) as cursor:
+                    it = cursor & self.__iterseek__(direction=Direction.F)
+                    non_index_filter = {}
+                    with ExitStack() as index_filter:
+                        for key, value in sorted(filters.items(), reverse=True):
+                            index = self.connection.model._indexes.get(key)
+                            if index is None:
+                                non_index_filter[key] = value
+                            else:
+                                db_name = self.connection._get_index_name(key)
+                                index_cursor = index_filter.enter_context(
+                                    index.cursor(res, db_name=db_name))
+                                index_cursor.dupkey = value
+                                it &= index_cursor
+
+#                        import ipdb
+#                        ipdb.set_trace()
+                        for pk in it:
+                            try:
+                                entry = self[pk]
+                            except IndexError:
+                                pass
+                            else:
+                                for key, value in non_index_filter.items():
+                                    if entry.get(key) != value:
+                                        break
+                                else:
+                                    yield entry
 
     @MaskException(lmdb.ReadonlyError, IndexError)
     def __getitem__(self, key):

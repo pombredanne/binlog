@@ -22,9 +22,9 @@ def testenv():
     @contextmanager
     def _testenv(dupsort=False):
         with tempfile.TemporaryDirectory() as tmpdir:
-            with lmdb.open(tmpdir, max_dbs=1, map_size=2**32) as env:
-                @contextmanager
-                def _transaction(direction=Direction.F):
+            @contextmanager
+            def _transaction(direction=Direction.F):
+                with lmdb.open(tmpdir, max_dbs=1, map_size=2**32) as env:
                     with env.begin(write=True) as txn:
                         res = Resources(env,
                                         txn,
@@ -37,7 +37,7 @@ def testenv():
                                               db_name='test',
                                               direction=direction) as cursor:
                             yield cursor
-                yield _transaction
+            yield _transaction
     return _testenv
 
 

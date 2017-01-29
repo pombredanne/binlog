@@ -1,5 +1,5 @@
 from hypothesis import strategies as st
-from hypothesis import given
+from hypothesis import given, example
 import pytest
 
 from binlog.registry import Registry, S
@@ -23,7 +23,7 @@ def test_registry_onesegment_invert(a, b):
         elif end == S.MAX:
             assert r.acked == []
     elif end == S.MAX:
-        assert r.acked == [S(S.MIN, end - 1)]
+        assert r.acked == [S(S.MIN, start - 1)]
     else:
         assert r.acked == [S(S.MIN, start - 1), S(end + 1, S.MAX)]
 
