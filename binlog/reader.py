@@ -133,7 +133,7 @@ class Reader:
                     it = cursor & self.__iterseek__(direction=Direction.F)
                     non_index_filter = {}
                     with ExitStack() as index_filter:
-                        for key, value in sorted(filters.items(), reverse=True):
+                        for key, value in filters.items():
                             index = self.connection.model._indexes.get(key)
                             if index is None:
                                 non_index_filter[key] = value
@@ -144,8 +144,6 @@ class Reader:
                                 index_cursor.dupkey = value
                                 it &= index_cursor
 
-#                        import ipdb
-#                        ipdb.set_trace()
                         for pk in it:
                             try:
                                 entry = self[pk]
