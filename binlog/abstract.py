@@ -54,3 +54,8 @@ class IterSeek(Iterator):
     @abc.abstractmethod
     def seek(self, pos):  # pragma: no cover
         pass
+
+
+    def __and__(self, other):
+        from .operations import ANDIterSeek
+        return ANDIterSeek(self, other)

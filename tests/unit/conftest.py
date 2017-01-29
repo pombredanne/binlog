@@ -1,5 +1,7 @@
-import tempfile
+from bisect import bisect_left, bisect_right
+from collections import deque
 from contextlib import contextmanager
+import tempfile
 
 import lmdb
 import pytest
@@ -37,3 +39,45 @@ def testenv():
                             yield cursor
                 yield _transaction
     return _testenv
+
+
+@pytest.fixture
+def dummyiterseek():
+    from binlog.abstract import IterSeek, Direction
+
+    class DummyIterSeek(IterSeek):
+        def __init__(self, items, direction=Direction.F):
+            self.items = list(sorted(items))
+            self.direction = direction
+
+            if direction is Direction.F:
+                self.left = deque()
+                self.right = deque(self.items)
+                self.bisect = bisect_left
+            else:
+                self.left = deque(self.items)
+                self.right = deque()
+                self.bisect = bisect_right
+
+        def __next__(self):
+            if self.direction is Direction.F:
+                try:
+                    item = self.right.popleft()
+                except IndexError:
+                    raise StopIteration
+                self.left.append(item)
+                return item
+            else:
+                try:
+                    item = self.left.pop()
+                except IndexError:
+                    raise StopIteration
+                self.right.appendleft(item)
+                return item
+
+        def seek(self, value):
+            idx = self.bisect(self.items, value)
+            self.left, self.right = (deque(self.items[:idx]),
+                                     deque(self.items[idx:]))
+
+    return DummyIterSeek
