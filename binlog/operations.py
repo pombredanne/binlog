@@ -1,4 +1,3 @@
-import math
 import operator as op
 
 from binlog.abstract import IterSeek, Direction
@@ -50,10 +49,10 @@ class ORIterSeek(BinaryIterSeek):
     def _nextiter(self):
         if self.direction is Direction.F:
             comp = min
-            limit = math.inf
+            limit = float('inf')
         else:
             comp = max
-            limit = -math.inf
+            limit = float('-inf')
 
         a = (self.a, next(self.a, limit))
         b = (self.b, next(self.b, limit))
