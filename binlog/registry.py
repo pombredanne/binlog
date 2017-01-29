@@ -7,6 +7,9 @@ from .util import popminleft, consume
 
 
 class S(namedtuple('Segment', ('L', 'R'))):
+    MIN = 0
+    MAX = 2**64-1
+
     def __contains__(self, value):
         return self.L <= value <= self.R
 
@@ -242,3 +245,20 @@ class Registry:
             current_2 = None
 
         return Registry(acked=new_acked)
+
+    def __invert__(self):
+        if not self.acked:
+            return Registry([S(S.MIN, S.MAX)])
+        else:
+            new_acked = []
+
+            if self.acked[0].L != S.MIN:
+                new_acked.append(S(S.MIN, self.acked[0].L - 1))
+
+            for a, b in zip(self.acked, self.acked[1:]):
+                new_acked.append(S(a.R + 1, b.L - 1))
+
+            if self.acked[-1].R != S.MAX:
+                new_acked.append(S(self.acked[-1].R + 1, S.MAX))
+
+            return Registry(new_acked)
