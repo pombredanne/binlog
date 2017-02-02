@@ -1,4 +1,5 @@
-pytest==2.7.0
-coverage==3.7.1
-hypothesis==1.6.1
-hypothesis-pytest==0.11.0
+Sphinx
+pytest
+hypothesis-pytest
+pytest-cov
+hypothesis-datetime==2.0.0

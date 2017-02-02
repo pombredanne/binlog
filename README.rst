@@ -8,36 +8,21 @@ independent.
 +-----------------+--------------------------------------------------------------------------+-------------------------------------------------------------------------------------+
 |                 |                          **Tests**                                       |                                     **Coverage**                                    |
 +=================+==========================================================================+=====================================================================================+
-|                 | .. image:: https://travis-ci.org/nilp0inter/binlog.svg?branch=master     |  .. image:: https://coveralls.io/repos/nilp0inter/binlog/badge.svg?branch=master    |
-|   **Master**    |    :target: https://travis-ci.org/nilp0inter/binlog                      |     :target: https://coveralls.io/r/nilp0inter/binlog?branch=master                 |
+|                 | .. image:: https://travis-ci.org/nilp0inter/binlog.svg?branch=master     |  https://coveralls.io/repos/github/nilp0inter/binlog/badge.svg?branch=master        |
+|   **Master**    |    :target: https://travis-ci.org/nilp0inter/binlog                      |     :target: https://coveralls.io/github/nilp0inter/binlog?branch=master            |
 |                 |    :alt: Master branch tests status                                      |     :alt: Master branch coverage status                                             |
 +-----------------+--------------------------------------------------------------------------+-------------------------------------------------------------------------------------+
-|                 | .. image:: https://travis-ci.org/nilp0inter/binlog.svg?branch=develop    |  .. image:: https://coveralls.io/repos/nilp0inter/binlog/badge.svg?branch=develop   |
-|  **Develop**    |    :target: https://travis-ci.org/nilp0inter/binlog                      |     :target: https://coveralls.io/r/nilp0inter/binlog?branch=develop                |
+|                 | .. image:: https://travis-ci.org/nilp0inter/binlog.svg?branch=develop    |  https://coveralls.io/repos/github/nilp0inter/binlog/badge.svg?branch=develop       |
+|  **Develop**    |    :target: https://travis-ci.org/nilp0inter/binlog                      |     :target: https://coveralls.io/github/nilp0inter/binlog?branch=develop           |
 |                 |    :alt: Develop branch tests status                                     |     :alt: Develop branch coverage status                                            |
 +-----------------+--------------------------------------------------------------------------+-------------------------------------------------------------------------------------+
+
 
 
 Installation
 ------------
 
-`binlog` depends on `bsddb3` which in turn depends on `Berkeley DB` (C library).
-
-To be able to install `bsddb3` you need to install `Berkeley DB` first.
-
-.. code-block:: bash
-
-   # apt-get install libdb5.1-dev
-
-
-Also you need to export the environment variable **BERKELEYDB_DIR** with
-the path of the installed library. As an example if ``db.h`` is in
-``/usr/include/db.h`` you need to set the variable like this:
-
-.. code-block:: bash
-
-   $ export BERKELEYDB_DIR=/usr  # because 'bsddb3' will append 'include/db.h'
-
+`binlog` depends on `lmdb`.
 
 You can now finish the installation with:
 

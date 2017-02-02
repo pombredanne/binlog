@@ -1,54 +1,83 @@
-import contextlib
-import os
-import shutil
-import subprocess
-import sys
+from bisect import bisect_left, bisect_right
+from collections import deque
+from contextlib import contextmanager
 import tempfile
-import time
 
+import lmdb
 import pytest
 
-from binlog import binlog
-from binlog import reader, writer
-
-# Binlog implementations.
-BINLOG_IMPL = [binlog.TDSBinlog, binlog.CDSBinlog]
-
-# Reader & Writer implementations.
-RW_IMPL = [
-    (reader.TDSReader, writer.TDSWriter),
-    (reader.CDSReader, writer.CDSWriter)]
 
 
-@pytest.yield_fixture(autouse=True)
-def server_factory():
+@pytest.fixture
+def testenv():
+    from binlog.abstract import Direction
+    from binlog.connection import Resources
+    from binlog.index import Index
+    from binlog.serializer import NumericSerializer
 
-    with tempfile.TemporaryDirectory() as base:
+    class TestIndex(Index):
+        K = NumericSerializer
+        V = NumericSerializer
 
-        socket_path = os.path.join(base, 'binlog.sock')
-        env_path = base
+    @contextmanager
+    def _testenv(dupsort=False):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            @contextmanager
+            def _transaction(direction=Direction.F):
+                with lmdb.open(tmpdir, max_dbs=1, map_size=2**32) as env:
+                    with env.begin(write=True) as txn:
+                        res = Resources(env,
+                                        txn,
+                                        db={'test': env.open_db(
+                                                key=b'test',
+                                                txn=txn,
+                                                dupsort=dupsort)})
 
-        @contextlib.contextmanager
-        def _server_factory():
-            # env_path could be reused by hypothesis so we need to
-            # remove all the files.
-            shutil.rmtree(env_path)
-            os.mkdir(env_path)
+                        with TestIndex.cursor(res,
+                                              db_name='test',
+                                              direction=direction) as cursor:
+                            yield cursor
+            yield _transaction
+    return _testenv
 
-            s = None
-            try:
-                s = subprocess.Popen(["binlog", env_path, socket_path],
-                                     stdout=sys.stdout,
-                                     stderr=subprocess.STDOUT)
 
-                while not os.path.exists(socket_path):
-                    time.sleep(1)
+@pytest.fixture
+def dummyiterseek():
+    from binlog.abstract import IterSeek, Direction
 
-                yield (socket_path, env_path)
-            finally:
-                time.sleep(1)  # Wait before closing the server to let all the data arrive.
-                if s is not None:
-                    s.terminate()
-                    s.wait()
+    class DummyIterSeek(IterSeek):
+        def __init__(self, items, direction=Direction.F):
+            self.items = list(sorted(items))
+            self.direction = direction
 
-        yield _server_factory
+            if direction is Direction.F:
+                self.left = deque()
+                self.right = deque(self.items)
+                self.bisect = bisect_left
+            else:
+                self.left = deque(self.items)
+                self.right = deque()
+                self.bisect = bisect_right
+
+        def __next__(self):
+            if self.direction is Direction.F:
+                try:
+                    item = self.right.popleft()
+                except IndexError:
+                    raise StopIteration
+                self.left.append(item)
+                return item
+            else:
+                try:
+                    item = self.left.pop()
+                except IndexError:
+                    raise StopIteration
+                self.right.appendleft(item)
+                return item
+
+        def seek(self, value):
+            idx = self.bisect(self.items, value)
+            self.left, self.right = (deque(self.items[:idx]),
+                                     deque(self.items[idx:]))
+
+    return DummyIterSeek
