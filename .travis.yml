@@ -11,5 +11,6 @@ script:
     - py.test --cov binlog --cov-report= tests/unit
     - cd docs/
     - sphinx-build -W -b html -d /tmp/doctress . /tmp/html
+    - cd ..
 after_success:
     - coveralls
