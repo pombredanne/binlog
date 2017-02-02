@@ -1,6 +1,17 @@
 CHANGELOG
 =========
 
+3.0.0
+-----
+
+- Rebuild from scratch now using LMDB instead of BerkeleyDB.
+- Get rid of the UNIX socket server.
+- Better reader semantics.
+- Indexes.
+- Django-like model definitions.
+- Transparent serialization using pickle.
+
+
 1.2.0
 -----
 
