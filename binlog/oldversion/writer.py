@@ -2,8 +2,8 @@ import os
 
 from bsddb3 import db
 
-from .binlog import TDSBinlog, CDSBinlog
-from .constants import *
+from binlog.oldversion.binlog import TDSBinlog, CDSBinlog
+from binlog.oldversion.constants import *
 
 
 class Writer:

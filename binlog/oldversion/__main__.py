@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 import asyncio
 
-from .server import Server
+from binlog.oldversion.server import Server
 
 
 try:

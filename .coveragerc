@@ -4,8 +4,12 @@ cover_pylib = False
 include =
     binlog/*
     .tox/*/binlog/*
+omit = 
+    binlog/oldversion/*
+    binlog/binlog.py
+    binlog/register.py
 
 [path]
 source = 
-    binlog
+    binlog/*
     .tox/*/binlog

@@ -1,218 +1,232 @@
-import os
-import pickle
+from itertools import takewhile, islice
+from contextlib import ExitStack
 
-from acidfile import ACIDFile
-from bsddb3 import db
+import lmdb
 
-from .binlog import TDSBinlog, CDSBinlog, Record
-from .constants import LOGINDEX_NAME, CHECKPOINT_DIR
-from .cursor import Cursor
-from .register import Register
+from .abstract import Direction
+from .databases import Entries
+from .serializer import NumericSerializer, ObjectSerializer
+from .util import MaskException, cmp
+from .registry import RegistryIterSeek, Registry
 
 
 class Reader:
-    def __init__(self, path, checkpoint=None):
-        self.env = self.open_environ(path, create=False)
+    def __init__(self, connection, name, registry):
+        self.connection = connection
+        self.name = name
+        self.registry = registry
+        self._parent = None
 
-        self.logindex = self.open_logindex(self.env, LOGINDEX_NAME)
-        self.li_cursor = Cursor(self.logindex)
-        fst_cl = self.li_cursor.first()
-        self.last_liidx = None 
+        self.closed = False
 
-        self.register = None 
+    @property
+    def parent(self):
+        if self.name is None:
+            return None
 
-        self.retry = False
-
-        self.current_log = None
-        self.cl_cursor = None
-
-        if checkpoint is None:
-            self.checkpoint = None
-        else:
-            self.checkpoint = os.path.join(path, CHECKPOINT_DIR, checkpoint)
-            self.load()
-
-        if self.register is None:
-            if fst_cl is None:
-                self.register = Register()
+        if self._parent is None:
+            parent_name = '.'.join(self.name.split('.')[:-1])
+            if parent_name:
+                self._parent = self.connection.reader(parent_name)
             else:
-                idx, _ = fst_cl
-                self.register = Register(liidx=idx)
+                self._parent = self
 
-    def is_log_available(self, pos):
-        li_idx = self.li_cursor.idx
-        data = self.li_cursor.set(pos.liidx)
-        self.li_cursor.idx = li_idx
-
-        return data is not None
-    
-    def last_available(self):
-        li_idx = self.li_cursor.idx
-        data = self.li_cursor.last()
-        if data is None:
-            idx = None
-        else:
-            idx, _ = data
-
-        self.li_cursor.idx = li_idx
-        return idx
-
-    def next(self, next_log=False):
-        if not self.retry:
-            last = self.last_available()
-            if last is not None:
-                pos = self.register.next(log=next_log)
-                while pos.liidx < last and not self.is_log_available(pos):
-                    pos = self.register.next(log=True)
-            else:
-                pos = self.register.next(log=next_log)
-            try:
-                self.set_cursors(pos)
-            except db.DBInvalidArgError as exc:
-                errcode, _ = exc.args
-                if errcode == 22:
-                    self.retry = True
-                    return None
-                else:  # pragma: no cover
-                    raise
-            except db.DBNoSuchFileError as exc:
-                self.retry = True
-                return None
-        else:
-            self.retry = False
-
-        if self.cl_cursor is None:
-            try:
-                self.set_cursors(self.register.current)
-            except db.DBInvalidArgError as exc:
-                errcode, _ = exc.args
-                self.retry = True
-                if errcode == 22:
-                    return None
-                else:  # pragma: no cover
-                    raise
-
-        try:
-            data = self.cl_cursor.current()
-        except db.DBInvalidArgError as exc:
-            errcode, _ = exc.args
-            if errcode == 22:
-                data = None
-            else:  # pragma: no cover
-                raise
-
-        if data is None:
-            if self.has_next_log():
-                return self.next(next_log=True)
-            else:
-                self.retry = True
-                return None
-        else:
-            _, value = data
-            return value
-
-
-    def next_record(self):
-        data = self.next()
-        if data is None:
+        if self._parent is self:
             return None
         else:
-            return Record(liidx=self.li_cursor.idx,
-                          clidx=self.cl_cursor.idx,
-                          value=data)
+            return self._parent
 
-    def load(self):
-        if self.checkpoint is None:
-            raise ValueError('checkpoint was not set')
-
-        try:
-            with ACIDFile(self.checkpoint, mode='rb') as cp:
-                self.register = pickle.load(cp)
-        except:
-            return False
-        else:
-            self.register.reset()
+    def is_acked(self, entry):
+        if entry.saved and self.registry is not None and \
+                entry.pk in self.registry:
             return True
+        return False
 
-    def save(self):
-        if self.checkpoint is None:
-            raise ValueError('checkpoint was not set')
+    def close(self):
+        self.commit()
+        self.closed = True
 
-        if not os.path.isdir(self.checkpoint):
-            os.makedirs(self.checkpoint)
+    def commit(self):
+        if self.registry:
+            self.connection.save_registry(self.name, self.registry)
 
-        try:
-            with ACIDFile(self.checkpoint, mode='wb') as cp:
-                pickle.dump(self.register, cp)
-        except:  # pragma: no cover
-            return False
+        if self.parent is not None:
+            self.parent.commit()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_, **__):
+        self.close()
+
+    def ack(self, entry):
+        # FIXME: import on top, fix recursive import
+        from .model import Model
+
+        if self.registry is None:
+            raise RuntimeError("Cannot ACK events on anonymous reader.")
+
+        if isinstance(entry, int):
+            return self.registry.add(entry)
+        elif not isinstance(entry, Model):
+            raise TypeError("ACK accepts either pk or model instance")
+        elif not entry.saved:
+            raise ValueError("Entry must be saved first")
         else:
-            return True
+            return self.registry.add(entry.pk)
 
-    def ack(self, record):
-        """Acknowledge some data given by `next_record`."""
-        self.register.add(record)
-
-    def has_next_log(self):
-        """Returns `True` if there is a next event log."""
-        last_idx = self.li_cursor.idx
-        try:
-            idx, _ = self.li_cursor.next()
-        except:
-            return False
+    def recursive_ack(self, entry):
+        if self.parent is None:
+            return self.ack(entry)
         else:
-            return True
-        finally:
-            self.li_cursor.idx = last_idx
+            return self.parent.recursive_ack(entry) and self.ack(entry)
 
-    def set_cursors(self, rec):
-        if self.cl_cursor is None or rec.liidx != self.last_liidx:
-            self.last_liidx = rec.liidx
-            self.li_cursor.idx = rec.liidx
-            _, logname = self.li_cursor.current()
-            self.current_log = db.DB(self.env)
-            self.current_log.open(logname.decode('utf-8'),
-                                  None, db.DB_RECNO, db.DB_RDONLY)
+    def _iter(self, cursor_attr, *args, start=None, **kwargs):
+        with MaskException(lmdb.ReadonlyError, StopIteration):
+            with self.connection.data(write=False) as res:
+                with Entries.cursor(res) as cursor:
+                    if start is not None:
+                        cursor.set_range(start)
+                    it = getattr(cursor, cursor_attr)(*args, **kwargs)
+                    for key, value in it:
+                        if self.registry is None or key not in self.registry:
+                            yield (key, value)
 
-            self.cl_cursor = Cursor(self.current_log, rec.clidx)
+    def _to_model(self, key, value):
+        entry = self.connection.model(**value)
+        entry.pk = key
+        entry.saved = True
+        return entry
+
+    def __iterseek__(self, direction):
+        if self.registry is None:
+            return RegistryIterSeek(~Registry(), direction=direction)
         else:
-            self.cl_cursor.idx = rec.clidx
+            return RegistryIterSeek(~self.registry, direction=direction)
 
-    def status(self):
-        res = {}
+    def __iter__(self):
+        with MaskException(lmdb.ReadonlyError, StopIteration):
+            with self.connection.data(write=False) as res:
+                with Entries.cursor(res) as cursor:
+                    it = cursor & self.__iterseek__(direction=Direction.F)
+                    for pk in it:
+                        try:
+                            yield self[pk]
+                        except IndexError:
+                            pass
 
-        li_idx = self.li_cursor.idx
+    def __reversed__(self):
+        with MaskException(lmdb.ReadonlyError, StopIteration):
+            with self.connection.data(write=False) as res:
+                with Entries.cursor(res, direction=Direction.B) as cursor:
+                    it = cursor & self.__iterseek__(direction=Direction.B)
+                    for pk in it:
+                        try:
+                            yield self[pk]
+                        except IndexError:
+                            pass
 
-        data = self.li_cursor.first()
-        while data is not None:
-            idx, name = data
-            try:
-                cdb = db.DB(self.env)
-                cdb.open(name.decode('utf-8'), None,
-                         db.DB_RECNO, db.DB_RDONLY)
-            except db.DBNoSuchFileError:
-                pass
+    def filter(self, **filters):
+        with MaskException(lmdb.ReadonlyError, StopIteration):
+            with self.connection.data(write=False) as res:
+                with Entries.cursor(res) as cursor:
+                    it = cursor & self.__iterseek__(direction=Direction.F)
+                    non_index_filter = {}
+                    with ExitStack() as index_filter:
+                        for key, value in filters.items():
+                            index = self.connection.model._indexes.get(key)
+                            if index is None:
+                                non_index_filter[key] = value
+                            else:
+                                db_name = self.connection._get_index_name(key)
+                                index_cursor = index_filter.enter_context(
+                                    index.cursor(res, db_name=db_name))
+                                index_cursor.dupkey = value
+                                it &= index_cursor
+
+                        for pk in it:
+                            try:
+                                entry = self[pk]
+                            except IndexError:
+                                pass
+                            else:
+                                for key, value in non_index_filter.items():
+                                    if entry.get(key) != value:
+                                        break
+                                else:
+                                    yield entry
+
+    @MaskException(lmdb.ReadonlyError, IndexError)
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            with self.connection.data(write=False) as res:
+                with res.txn.cursor(res.db['entries']) as cursor:
+                    if key < 0:
+                        for idx, raw_item in enumerate(cursor.iterprev(), 1):
+                            if key + idx == 0:
+                                raw_key, raw_value = raw_item
+                                entry = self.connection.model(
+                                    **ObjectSerializer.python_value(raw_value))
+                                entry.saved = True
+                                entry.pk = NumericSerializer.python_value(
+                                    raw_key)
+                                break
+                        else:
+                            raise IndexError
+                    else:
+                        raw_value = cursor.get(NumericSerializer.db_value(key))
+                        if raw_value is None:
+                            raise IndexError
+                        else:
+                            entry = self.connection.model(
+                                **ObjectSerializer.python_value(raw_value))
+                            entry.saved = True
+                            entry.pk = key 
+                    return entry
+        elif isinstance(key, slice):
+            def to_num(v):
+                return 0 if v is None else v
+
+            def to_idx(v):
+                try:
+                    return self[v].pk if v is not None and v < 0 else v
+                except IndexError:
+                    return IndexError
+
+            def are_numbers(*items):
+                return all(isinstance(i, int) for i in items)
+
+            if key.step == 0:
+                raise ValueError("slice step cannot be zero")
             else:
-                cur = cdb.cursor()
-                cdata = cur.last()
-                cur.close()
-                cdb.close()
-                if cdata is not None:
-                    cidx, _ = cdata
-                    reg = self.register.reg.get(idx)
-                    res[idx] = [(1, cidx)] == reg
-                    if not reg and idx > 1:
-                        res[idx - 1] = False
+                direction = 'iternext' if to_num(key.step) >= 0 else 'iterprev'
 
-            data = self.li_cursor.next()
+            start = to_idx(key.start)
+            stop = to_idx(key.stop)
+            step = abs(key.step) if key.step is not None else 1
+            step_sign = (cmp(to_num(key.step), 0)
+                         if key.step is not None
+                         else 1)
 
-        self.li_cursor.idx = li_idx
-        return res
+            if stop is IndexError and step_sign == 1:
+                it = []
+            elif start is IndexError and step_sign == -1:
+                it = []
+            elif are_numbers(start, stop) and cmp(start, stop) == step_sign:
+                it = []
+            else:
+                it = self._iter(direction,
+                                start=None if start is IndexError else start)
 
 
-class TDSReader(TDSBinlog, Reader):
-    pass
+            if isinstance(stop, int) and step_sign is not None:
+                if step_sign > 0:
+                    it = takewhile(lambda i: i[0] < stop, it)
+                else:
+                    it = takewhile(lambda i: i[0] > stop, it)
 
+            it = islice(it, None, None, step)
 
-class CDSReader(CDSBinlog, Reader):
-    pass
+            return (self._to_model(*i) for i in it)
+        else:
+            raise TypeError("Item must be int or slice.")

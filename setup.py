@@ -5,7 +5,7 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(HERE, 'README.rst')).read()
 CHANGELOG = open(os.path.join(HERE, 'CHANGELOG.rst')).read()
 
-VERSION = '1.2.0'
+VERSION = '3.0.0rc1'
 
 setup(name='binlog',
       version=VERSION,
@@ -26,9 +26,9 @@ setup(name='binlog',
       include_package_data=True,
       zip_safe=False,
       install_requires=[
-          'bsddb3==6.1.0',
-          'acidfile==1.2.1'
+          'lmdb==0.92'
       ],
-      entry_points={
-          'console_scripts': ['binlog=binlog.__main__:main']
+      extras_require={
+          'migration':  ['bsddb3==6.1.0',
+                         'acidfile==1.2.1'],
       })
