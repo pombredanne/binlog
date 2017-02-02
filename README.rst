@@ -8,14 +8,15 @@ independent.
 +-----------------+--------------------------------------------------------------------------+-------------------------------------------------------------------------------------+
 |                 |                          **Tests**                                       |                                     **Coverage**                                    |
 +=================+==========================================================================+=====================================================================================+
-|                 | .. image:: https://travis-ci.org/nilp0inter/binlog.svg?branch=master     |  .. image:: https://coveralls.io/repos/nilp0inter/binlog/badge.svg?branch=master    |
-|   **Master**    |    :target: https://travis-ci.org/nilp0inter/binlog                      |     :target: https://coveralls.io/r/nilp0inter/binlog?branch=master                 |
+|                 | .. image:: https://travis-ci.org/nilp0inter/binlog.svg?branch=master     |  https://coveralls.io/repos/github/nilp0inter/binlog/badge.svg?branch=master        |
+|   **Master**    |    :target: https://travis-ci.org/nilp0inter/binlog                      |     :target: https://coveralls.io/github/nilp0inter/binlog?branch=master            |
 |                 |    :alt: Master branch tests status                                      |     :alt: Master branch coverage status                                             |
 +-----------------+--------------------------------------------------------------------------+-------------------------------------------------------------------------------------+
-|                 | .. image:: https://travis-ci.org/nilp0inter/binlog.svg?branch=develop    |  .. image:: https://coveralls.io/repos/nilp0inter/binlog/badge.svg?branch=develop   |
-|  **Develop**    |    :target: https://travis-ci.org/nilp0inter/binlog                      |     :target: https://coveralls.io/r/nilp0inter/binlog?branch=develop                |
+|                 | .. image:: https://travis-ci.org/nilp0inter/binlog.svg?branch=develop    |  https://coveralls.io/repos/github/nilp0inter/binlog/badge.svg?branch=develop       |
+|  **Develop**    |    :target: https://travis-ci.org/nilp0inter/binlog                      |     :target: https://coveralls.io/github/nilp0inter/binlog?branch=develop           |
 |                 |    :alt: Develop branch tests status                                     |     :alt: Develop branch coverage status                                            |
 +-----------------+--------------------------------------------------------------------------+-------------------------------------------------------------------------------------+
+
 
 
 Installation
