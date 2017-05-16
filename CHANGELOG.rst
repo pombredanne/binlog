@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.0.1
+-----
+
+- Return True on recursive_ack if at least one reader success on the ack.
+
+
 3.0.0
 -----
 

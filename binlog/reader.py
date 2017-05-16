@@ -79,7 +79,8 @@ class Reader:
         if self.parent is None:
             return self.ack(entry)
         else:
-            return self.parent.recursive_ack(entry) and self.ack(entry)
+            return any((self.parent.recursive_ack(entry),
+                        self.ack(entry)))
 
     def _iter(self, cursor_attr, *args, start=None, **kwargs):
         with MaskException(lmdb.ReadonlyError, StopIteration):
