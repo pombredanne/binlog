@@ -26,8 +26,8 @@ def test_connection_attributes(tmpdir):
         assert conn.path == tmpdir
         assert conn.kwargs == kwargs
         assert not conn.closed
-        lmdbopen.assert_any_call(str(tmpdir) + "/readers", max_dbs=1, **kwargs)
-        lmdbopen.assert_any_call(str(tmpdir) + "/data", max_dbs=2, **kwargs)
+
+        assert not lmdbopen.called, "Should be called on __enter__"
 
 
 def test_connection_close(tmpdir):
@@ -38,7 +38,12 @@ def test_connection_close(tmpdir):
 
 
 def test_connection_is_context_manager(tmpdir):
-    with Model.open(tmpdir) as conn:
-        assert not conn.closed
+    with patch('lmdb.open') as lmdbopen:
+        with Model.open(tmpdir) as conn:
+            assert not conn.closed
+
+            lmdbopen.assert_any_call(str(tmpdir) + "/readers", max_dbs=1)
+            lmdbopen.assert_any_call(str(tmpdir) + "/data", max_dbs=2)
 
     assert conn.closed
+
