@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+3.0.2
+-----
+
+- Stopping the Connection class from opening and closing the lmdb
+  environment on every single operation.
+
+
 3.0.1
 -----
 
