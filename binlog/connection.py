@@ -4,6 +4,7 @@ from functools import reduce
 from itertools import islice
 from pathlib import Path
 import operator as op
+import threading
 
 import lmdb
 
@@ -20,7 +21,14 @@ Resources = namedtuple('Resources', ['env', 'txn', 'db'])
 class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
     def __init__(self, *_, **__):
         self.closed = False
-        self._open_environments()
+        self._data_env = None
+        self._readers_env = None
+
+        self.thread_id = threading.current_thread()
+        if self.thread_id != threading.main_thread():
+            raise RuntimeError(
+                ("This version doesn't support using connections "
+                 "outside the main thread."))
 
     def _open_environments(self):
         """
@@ -30,6 +38,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         """
         self.data_env
         self.readers_env
+        self.closed = False
 
     def close(self):
         self.closed = True
@@ -37,7 +46,11 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         del self.readers_env
 
     def __enter__(self):
-        return self
+        if self.thread_id != threading.current_thread():
+            raise RuntimeError("Connection made from a different thread!")
+        else:
+            self._open_environments()
+            return self
 
     def __exit__(self, *_, **__):
         self.close()
@@ -47,7 +60,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
     @property
     def data_env(self):
-        if getattr(self, '_data_env', None) is None:
+        if self._data_env is None:
             path = self._gen_path('data_env_directory')
             max_dbs = 2 + len(self.model._indexes)
             self._data_env = self._open_env(path,
@@ -63,7 +76,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
     @property
     def readers_env(self):
-        if getattr(self, '_readers_env', None) is None:
+        if self._readers_env is None:
             path = self._gen_path('readers_env_directory')
             max_dbs = 1
             self._readers_env = self._open_env(path,
