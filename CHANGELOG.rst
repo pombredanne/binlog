@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+3.0.3
+-----
+
+- Preventing the user to use the library in a multithreading
+  environment.
+
+
 3.0.2
 -----
 
