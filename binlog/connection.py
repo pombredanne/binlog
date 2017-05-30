@@ -20,9 +20,21 @@ Resources = namedtuple('Resources', ['env', 'txn', 'db'])
 class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
     def __init__(self, *_, **__):
         self.closed = False
+        self._open_environments()
+
+    def _open_environments(self):
+        """
+        Access to data_env and readers_env properties to open the lmdb
+        environments.
+
+        """
+        self.data_env
+        self.readers_env
 
     def close(self):
         self.closed = True
+        del self.data_env
+        del self.readers_env
 
     def __enter__(self):
         return self
@@ -32,6 +44,38 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
     def _open_env(self, path, **kwargs):
         return lmdb.open(str(path), **kwargs)
+
+    @property
+    def data_env(self):
+        if getattr(self, '_data_env', None) is None:
+            path = self._gen_path('data_env_directory')
+            max_dbs = 2 + len(self.model._indexes)
+            self._data_env = self._open_env(path,
+                                            max_dbs=max_dbs,
+                                            **self.kwargs)
+        return self._data_env
+
+    @data_env.deleter
+    def data_env(self):
+        if self._data_env is not None:
+            self._data_env.close()
+            self._data_env = None
+
+    @property
+    def readers_env(self):
+        if getattr(self, '_readers_env', None) is None:
+            path = self._gen_path('readers_env_directory')
+            max_dbs = 1
+            self._readers_env = self._open_env(path,
+                                            max_dbs=max_dbs,
+                                            **self.kwargs)
+        return self._readers_env
+
+    @readers_env.deleter
+    def readers_env(self):
+        if self._readers_env is not None:
+            self._readers_env.close()
+            self._readers_env = None
 
     def _get_db(self, env, txn, meta_key, **kwargs):
         return env.open_db(key=self.model._meta[meta_key].encode('utf-8'),
@@ -54,32 +98,26 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
     @contextmanager
     def data(self, write=True):
-        path = self._gen_path('data_env_directory')
-        max_dbs = 2 + len(self.model._indexes)
+        env = self.data_env
+        with env.begin(write=write, buffers=True) as txn:
+            dbs = {}
+            dbs['config'] = self._get_db(env, txn, 'config_db_name')
+            dbs['entries'] = self._get_db(env, txn, 'entries_db_name')
+            for index_name in self.model._indexes:
+                index_db_name = self._get_index_name(index_name)
+                dbs[index_db_name] = self._get_idx(env, txn, index_db_name,
+                                                  dupsort=True)
 
-        with self._open_env(path, max_dbs=max_dbs, **self.kwargs) as env:
-            with env.begin(write=write, buffers=True) as txn:
-                dbs = {}
-                dbs['config'] = self._get_db(env, txn, 'config_db_name')
-                dbs['entries'] = self._get_db(env, txn, 'entries_db_name')
-                for index_name in self.model._indexes:
-                    index_db_name = self._get_index_name(index_name)
-                    dbs[index_db_name] = self._get_idx(env, txn, index_db_name,
-                                                      dupsort=True)
-
-                yield Resources(env=env, txn=txn, db=dbs)
+            yield Resources(env=env, txn=txn, db=dbs)
 
     @contextmanager
     def readers(self, write=True):
-        path = self._gen_path('readers_env_directory')
-        max_dbs = 1
-
-        with self._open_env(path, max_dbs=max_dbs, **self.kwargs) as env:
-            with env.begin(write=write, buffers=True) as txn:
-                checkpoints_db = self._get_db(env, txn, 'checkpoints_db_name')
-                yield Resources(env=env,
-                                txn=txn,
-                                db={'checkpoints': checkpoints_db})
+        env = self.readers_env
+        with env.begin(write=write, buffers=True) as txn:
+            checkpoints_db = self._get_db(env, txn, 'checkpoints_db_name')
+            yield Resources(env=env,
+                            txn=txn,
+                            db={'checkpoints': checkpoints_db})
 
     def _get_next_event_idx(self, res):
         with Config.cursor(res) as cursor:
@@ -117,7 +155,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
     def create(self, **kwargs):
         with self.data(write=True) as res:
             next_idx = self._get_next_event_idx(res)
-            
+
             entry = self.model(**kwargs)
             with Entries.cursor(res) as cursor:
                 success = cursor.put(next_idx,

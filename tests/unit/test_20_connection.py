@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from binlog.model import Model
@@ -17,12 +19,15 @@ def test_connection_attributes(tmpdir):
         pass
 
     kwargs = {'somevar': 'somevalue'}
-    conn = CustomModel.open(tmpdir, **kwargs)
+    with patch('lmdb.open') as lmdbopen:
+        conn = CustomModel.open(tmpdir, **kwargs)
 
-    assert conn.model is CustomModel
-    assert conn.path == tmpdir
-    assert conn.kwargs == kwargs
-    assert not conn.closed
+        assert conn.model is CustomModel
+        assert conn.path == tmpdir
+        assert conn.kwargs == kwargs
+        assert not conn.closed
+        lmdbopen.assert_any_call(str(tmpdir) + "/readers", max_dbs=1, **kwargs)
+        lmdbopen.assert_any_call(str(tmpdir) + "/data", max_dbs=2, **kwargs)
 
 
 def test_connection_close(tmpdir):
