@@ -1,6 +1,6 @@
 from collections import namedtuple
 from contextlib import contextmanager
-from functools import reduce
+from functools import reduce, wraps
 from itertools import islice
 from pathlib import Path
 import operator as op
@@ -9,13 +9,36 @@ import threading
 import lmdb
 
 from .databases import Config, Checkpoints, Entries
-from .exceptions import IntegrityError, ReaderDoesNotExist
+from .exceptions import IntegrityError, ReaderDoesNotExist, BadUsageError
 from .reader import Reader
 from .registry import Registry
 from .util import MaskException
 
 
 Resources = namedtuple('Resources', ['env', 'txn', 'db'])
+
+
+def same_thread(f):
+    @wraps(f)
+    def wrapper(self, *args, **kwargs):
+        if self.thread_id != threading.current_thread():
+            raise BadUsageError(
+                ("Sharing connections among threads is not supported."))
+        else:
+            return f(self, *args, **kwargs)
+
+    return wrapper
+
+
+def open_db(f):
+    @wraps(f)
+    def wrapper(self, *args, **kwargs):
+        if self.closed:
+            raise BadUsageError("Cannot use a closed database.")
+        else:
+            return f(self, *args, **kwargs)
+
+    return wrapper
 
 
 class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
@@ -26,7 +49,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
         self.thread_id = threading.current_thread()
         if self.thread_id != threading.main_thread():
-            raise RuntimeError(
+            raise BadUsageError(
                 ("This version doesn't support using connections "
                  "outside the main thread."))
 
@@ -54,6 +77,9 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
     def __exit__(self, *_, **__):
         self.close()
+
+    def __getstate__(self):
+        raise BadUsageError("Connection cannot be picklelized.")
 
     def _open_env(self, path, **kwargs):
         return lmdb.open(str(path), **kwargs)
@@ -109,6 +135,8 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         template = self.model._meta['index_db_format']
         return template.format(model=self.model, index_name=name)
 
+    @open_db
+    @same_thread
     @contextmanager
     def data(self, write=True):
         env = self.data_env
@@ -123,6 +151,8 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
             yield Resources(env=env, txn=txn, db=dbs)
 
+    @open_db
+    @same_thread
     @contextmanager
     def readers(self, write=True):
         env = self.readers_env
@@ -165,6 +195,8 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                     cursor.delete(key, value)
 
 
+    @open_db
+    @same_thread
     def create(self, **kwargs):
         with self.data(write=True) as res:
             next_idx = self._get_next_event_idx(res)
@@ -186,6 +218,8 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             else:
                 raise IntegrityError("Key already exists")
 
+    @open_db
+    @same_thread
     def bulk_create(self, entries):
         with self.data(write=True) as res:
             next_idx = self._get_next_event_idx(res)
@@ -209,6 +243,8 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             else:
                 return added
 
+    @open_db
+    @same_thread
     @MaskException(lmdb.ReadonlyError, ReaderDoesNotExist)
     def reader(self, name=None):
         if name is not None:
@@ -222,6 +258,8 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
         return Reader(self, name, registry)
 
+    @open_db
+    @same_thread
     def register_reader(self, name):
         path = name.split('.')
 
@@ -236,6 +274,8 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             parents_result = self.register_reader('.'.join(parents))
             return result or parents_result
 
+    @open_db
+    @same_thread
     @MaskException(lmdb.ReadonlyError, ReaderDoesNotExist)
     def unregister_reader(self, name):
         with self.readers(write=True) as res:
@@ -245,6 +285,8 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                 else:
                     return True
 
+    @open_db
+    @same_thread
     def save_registry(self, name, new_registry):
         with self.readers(write=True) as res:
             with Checkpoints.cursor(res) as cursor:
@@ -253,11 +295,15 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                                   stored_registry | new_registry,
                                   overwrite=True)
 
+    @open_db
+    @same_thread
     def list_readers(self):
         with self.readers(write=True) as res:
             with Checkpoints.cursor(res) as cursor:
                 return list(cursor.iternext(values=False))
 
+    @open_db
+    @same_thread
     def remove(self, entry):
         readers = self.list_readers()
         if not readers:
@@ -275,6 +321,8 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                         self._unindex(res, entry)
                     return success
 
+    @open_db
+    @same_thread
     def purge(self, chunk_size=1000):
         if chunk_size < 1:
             raise ValueError("chunk_size must be greater than 0")

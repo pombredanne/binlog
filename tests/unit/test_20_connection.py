@@ -1,8 +1,11 @@
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from unittest.mock import patch
+import pickle
 
 import pytest
 
 from binlog.model import Model
+from binlog.exceptions import BadUsageError
 
 
 def test_model_open_returns_connection(tmpdir):
@@ -47,3 +50,70 @@ def test_connection_is_context_manager(tmpdir):
 
     assert conn.closed
 
+
+@pytest.mark.parametrize("io_method", ["data",
+                                       "readers",
+                                       "create",
+                                       "bulk_create",
+                                       "reader",
+                                       "register_reader",
+                                       "unregister_reader",
+                                       "save_registry",
+                                       "list_readers",
+                                       "remove",
+                                       "purge"])
+def test_cannot_use_same_connection_from_multiple_threads(tmpdir, io_method):
+    conn = Model.open(tmpdir)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        res = pool.submit(getattr(conn, io_method))
+
+    with pytest.raises(BadUsageError):
+        res.result()
+
+
+def test_connection_cannot_be_picklelized(tmpdir):
+    conn = Model.open(tmpdir)
+
+    with pytest.raises(BadUsageError):
+        pickle.dumps(conn)
+
+
+@pytest.mark.skip(reason="http://bugs.python.org/issue30549#")
+@pytest.mark.parametrize("io_method", ["data",
+                                       "readers",
+                                       "create",
+                                       "bulk_create",
+                                       "reader",
+                                       "register_reader",
+                                       "unregister_reader",
+                                       "save_registry",
+                                       "list_readers",
+                                       "remove",
+                                       "purge"])
+def test_cannot_use_same_connection_from_multiple_processes(tmpdir, io_method):
+    conn = Model.open(tmpdir)
+
+    with ProcessPoolExecutor(max_workers=2) as pool:
+        with pytest.raises(BadUsageError):
+            res = pool.submit(getattr(conn, io_method))
+
+
+
+@pytest.mark.parametrize("io_method", ["data",
+                                       "readers",
+                                       "create",
+                                       "bulk_create",
+                                       "reader",
+                                       "register_reader",
+                                       "unregister_reader",
+                                       "save_registry",
+                                       "list_readers",
+                                       "remove",
+                                       "purge"])
+def test_cannot_use_same_connection_after_when_is_closed(tmpdir, io_method):
+    with Model.open(tmpdir) as db:
+        pass
+
+    with pytest.raises(BadUsageError):
+        getattr(db, io_method)()

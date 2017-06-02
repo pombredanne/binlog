@@ -3,3 +3,7 @@ class IntegrityError(Exception):
 
 class ReaderDoesNotExist(Exception):
     pass
+
+
+class BadUsageError(RuntimeError):
+    pass
