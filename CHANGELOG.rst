@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+3.1.0
+-----
+
+- Preventing the user to picklelize connections.
+- Preventing the user to use a closed connection.
+
+
 3.0.3
 -----
 
