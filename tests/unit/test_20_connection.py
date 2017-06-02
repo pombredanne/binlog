@@ -51,7 +51,6 @@ def test_connection_is_context_manager(tmpdir):
     assert conn.closed
 
 
-@pytest.mark.wip
 @pytest.mark.parametrize("io_method", ["data",
                                        "readers",
                                        "create",
@@ -73,7 +72,6 @@ def test_cannot_use_same_connection_from_multiple_threads(tmpdir, io_method):
         res.result()
 
 
-@pytest.mark.wip
 def test_connection_cannot_be_picklelized(tmpdir):
     conn = Model.open(tmpdir)
 
@@ -99,3 +97,23 @@ def test_cannot_use_same_connection_from_multiple_processes(tmpdir, io_method):
     with ProcessPoolExecutor(max_workers=2) as pool:
         with pytest.raises(BadUsageError):
             res = pool.submit(getattr(conn, io_method))
+
+
+
+@pytest.mark.parametrize("io_method", ["data",
+                                       "readers",
+                                       "create",
+                                       "bulk_create",
+                                       "reader",
+                                       "register_reader",
+                                       "unregister_reader",
+                                       "save_registry",
+                                       "list_readers",
+                                       "remove",
+                                       "purge"])
+def test_cannot_use_same_connection_after_when_is_closed(tmpdir, io_method):
+    with Model.open(tmpdir) as db:
+        pass
+
+    with pytest.raises(BadUsageError):
+        getattr(db, io_method)()

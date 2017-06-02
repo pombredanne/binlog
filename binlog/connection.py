@@ -30,6 +30,17 @@ def same_thread(f):
     return wrapper
 
 
+def open_db(f):
+    @wraps(f)
+    def wrapper(self, *args, **kwargs):
+        if self.closed:
+            raise BadUsageError("Cannot use a closed database.")
+        else:
+            return f(self, *args, **kwargs)
+
+    return wrapper
+
+
 class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
     def __init__(self, *_, **__):
         self.closed = False
@@ -124,6 +135,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
         template = self.model._meta['index_db_format']
         return template.format(model=self.model, index_name=name)
 
+    @open_db
     @same_thread
     @contextmanager
     def data(self, write=True):
@@ -139,6 +151,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
             yield Resources(env=env, txn=txn, db=dbs)
 
+    @open_db
     @same_thread
     @contextmanager
     def readers(self, write=True):
@@ -182,6 +195,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                     cursor.delete(key, value)
 
 
+    @open_db
     @same_thread
     def create(self, **kwargs):
         with self.data(write=True) as res:
@@ -204,6 +218,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             else:
                 raise IntegrityError("Key already exists")
 
+    @open_db
     @same_thread
     def bulk_create(self, entries):
         with self.data(write=True) as res:
@@ -228,6 +243,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             else:
                 return added
 
+    @open_db
     @same_thread
     @MaskException(lmdb.ReadonlyError, ReaderDoesNotExist)
     def reader(self, name=None):
@@ -242,6 +258,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
         return Reader(self, name, registry)
 
+    @open_db
     @same_thread
     def register_reader(self, name):
         path = name.split('.')
@@ -257,6 +274,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
             parents_result = self.register_reader('.'.join(parents))
             return result or parents_result
 
+    @open_db
     @same_thread
     @MaskException(lmdb.ReadonlyError, ReaderDoesNotExist)
     def unregister_reader(self, name):
@@ -267,6 +285,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                 else:
                     return True
 
+    @open_db
     @same_thread
     def save_registry(self, name, new_registry):
         with self.readers(write=True) as res:
@@ -276,12 +295,14 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                                   stored_registry | new_registry,
                                   overwrite=True)
 
+    @open_db
     @same_thread
     def list_readers(self):
         with self.readers(write=True) as res:
             with Checkpoints.cursor(res) as cursor:
                 return list(cursor.iternext(values=False))
 
+    @open_db
     @same_thread
     def remove(self, entry):
         readers = self.list_readers()
@@ -300,6 +321,7 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                         self._unindex(res, entry)
                     return success
 
+    @open_db
     @same_thread
     def purge(self, chunk_size=1000):
         if chunk_size < 1:
