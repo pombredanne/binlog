@@ -8,6 +8,7 @@ import threading
 
 import lmdb
 
+from .connectionmanager import PROCESS_CONNECTIONS
 from .databases import Config, Checkpoints, Entries
 from .exceptions import IntegrityError, ReaderDoesNotExist, BadUsageError
 from .reader import Reader
@@ -41,11 +42,16 @@ def open_db(f):
     return wrapper
 
 
-class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
-    def __init__(self, *_, **__):
-        self.closed = False
+class Connection:
+    def __init__(self, model, path, kwargs):
+        self.model = model
+        self.path = path
+        self.kwargs = kwargs
+
+        self.closed = None
         self._data_env = None
         self._readers_env = None
+        self.refcount = 0
 
         self.thread_id = threading.current_thread()
         if self.thread_id != threading.main_thread():
@@ -53,26 +59,60 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
                 ("This version doesn't support using connections "
                  "outside the main thread."))
 
+    def open(self):
+        if self.closed:
+            raise BadUsageError("Cannot reuse a closed connection.")
+        elif self.refcount == 0:
+            self._open_environments()
+            self.refcount = 1
+            self.closed = False
+            return self
+        else:
+            self.refcount += 1
+            return self
+
     def _open_environments(self):
         """
         Access to data_env and readers_env properties to open the lmdb
         environments.
 
         """
-        self.data_env
-        self.readers_env
-        self.closed = False
+        # Open DATA ENV
+        self.data_env = lmdb.open(
+            self._gen_path('data_env_directory'),
+            max_dbs=2 + len(self.model._indexes),
+            **self.kwargs)
+
+        # Open READERS ENV
+        self.readers_env = lmdb.open(
+            self._gen_path('readers_env_directory'),
+            max_dbs=1,
+            **self.kwargs)
 
     def close(self):
-        self.closed = True
-        del self.data_env
-        del self.readers_env
+        if self.refcount == 1:
+            self.closed = True
+
+            # DATA ENV
+            self.data_env.close()
+            self.data_env = None
+
+            # READERS ENV
+            self.readers_env.close()
+            self.readers_env = None
+
+            self.refcount -= 1
+            PROCESS_CONNECTIONS.close(self.path)
+
+        elif self.refcount < 1:
+            raise BadUsageError("Cannot close already closed connection")
+        else:  # self.refcount > 1
+            self.refcount -= 1
 
     def __enter__(self):
         if self.thread_id != threading.current_thread():
             raise RuntimeError("Connection made from a different thread!")
         else:
-            self._open_environments()
             return self
 
     def __exit__(self, *_, **__):
@@ -80,41 +120,6 @@ class Connection(namedtuple('_Connection', ('model', 'path', 'kwargs'))):
 
     def __getstate__(self):
         raise BadUsageError("Connection cannot be picklelized.")
-
-    def _open_env(self, path, **kwargs):
-        return lmdb.open(str(path), **kwargs)
-
-    @property
-    def data_env(self):
-        if self._data_env is None:
-            path = self._gen_path('data_env_directory')
-            max_dbs = 2 + len(self.model._indexes)
-            self._data_env = self._open_env(path,
-                                            max_dbs=max_dbs,
-                                            **self.kwargs)
-        return self._data_env
-
-    @data_env.deleter
-    def data_env(self):
-        if self._data_env is not None:
-            self._data_env.close()
-            self._data_env = None
-
-    @property
-    def readers_env(self):
-        if self._readers_env is None:
-            path = self._gen_path('readers_env_directory')
-            max_dbs = 1
-            self._readers_env = self._open_env(path,
-                                            max_dbs=max_dbs,
-                                            **self.kwargs)
-        return self._readers_env
-
-    @readers_env.deleter
-    def readers_env(self):
-        if self._readers_env is not None:
-            self._readers_env.close()
-            self._readers_env = None
 
     def _get_db(self, env, txn, meta_key, **kwargs):
         return env.open_db(key=self.model._meta[meta_key].encode('utf-8'),

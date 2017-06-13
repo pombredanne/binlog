@@ -30,7 +30,7 @@ def test_connection_attributes(tmpdir):
         assert conn.kwargs == kwargs
         assert not conn.closed
 
-        assert not lmdbopen.called, "Should be called on __enter__"
+        assert lmdbopen.called, "Should be called on first open"
 
 
 def test_connection_close(tmpdir):
@@ -117,3 +117,22 @@ def test_cannot_use_same_connection_after_when_is_closed(tmpdir, io_method):
 
     with pytest.raises(BadUsageError):
         getattr(db, io_method)()
+
+
+def test_same_database_is_same_connection(tmpdir):
+    assert Model.open(tmpdir) is Model.open(tmpdir)
+
+
+def test_too_many_close(tmpdir):
+    conn1 = Model.open(tmpdir)
+    conn1.close()
+    with pytest.raises(BadUsageError):
+        conn1.close()
+
+
+def test_cant_reopen_a_closed_connection(tmpdir):
+    conn1 = Model.open(tmpdir)
+    conn1.close()
+    assert conn1.closed
+    with pytest.raises(BadUsageError):
+        conn1.open()
