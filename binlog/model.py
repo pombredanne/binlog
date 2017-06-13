@@ -48,8 +48,13 @@ class Model(dict, metaclass=ModelMeta):
 
     @classmethod
     def open(cls, path, **kwargs):
-        connection_class = cls._meta['connection_class']
-        return connection_class(model=cls, path=path, kwargs=kwargs)
+        from .connectionmanager import PROCESS_CONNECTIONS
+
+        return PROCESS_CONNECTIONS.open(
+            cls,
+            path,
+            cls._meta['connection_class'],
+            kwargs)
 
     def mark_as_saved(self, pk):
         self.pk = pk

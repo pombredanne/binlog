@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+3.2.0
+-----
+
+- Implementation of per-process connection manager to reuse connections
+  when used concurrently.
+
+
 3.1.0
 -----
 

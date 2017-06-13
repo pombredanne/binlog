@@ -5,7 +5,7 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(HERE, 'README.rst')).read()
 CHANGELOG = open(os.path.join(HERE, 'CHANGELOG.rst')).read()
 
-VERSION = '3.1.0'
+VERSION = '3.2.0'
 
 setup(name='binlog',
       version=VERSION,
