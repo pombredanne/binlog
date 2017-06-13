@@ -1,12 +1,16 @@
 from itertools import zip_longest
+from tempfile import TemporaryDirectory
 
+from hypothesis import given
+from hypothesis import strategies as st
 import pytest
+
 
 from binlog.databases import Entries
 from binlog.model import Model
 
 
-def test_reader_reads(tmpdir):
+def test_reader_reads_bulk_create(tmpdir):
     with Model.open(tmpdir) as db:
         entries = [Model(idx=i) for i in range(10)]
         db.bulk_create(entries)
@@ -15,6 +19,19 @@ def test_reader_reads(tmpdir):
         with db.reader('myreader') as reader:
             for current, expected in zip_longest(entries, reader):
                 assert current == expected
+
+
+@given(entries=st.lists(st.dictionaries(keys=st.text(), values=st.text())))
+def test_reader_reads_create(entries):
+    with TemporaryDirectory() as tmpdir:
+        with Model.open(tmpdir) as db:
+            for e in entries:
+                db.create(**e)
+
+            db.register_reader('myreader')
+            with db.reader('myreader') as reader:
+                for current, expected in zip_longest(entries, reader):
+                    assert current == expected
 
 
 def test_reader_reversed_read(tmpdir):
