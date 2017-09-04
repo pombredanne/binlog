@@ -37,24 +37,8 @@ Development
 Follow the instructions in the **Installation** section except for the
 last one.
 
-Clone this package and install the package in develop mode.
+Clone this package and run the testing docker image with:
 
 .. code-block:: bash
 
-   $ git clone -b develop https://github.com/nilp0inter/binlog
-   $ cd binlog
-   $ pip install -e .
-
-
-To finish, install the development dependencies:
-
-.. code-block:: bash
-
-   $ pip install -r requirements/tox.txt
-
-
-Now you are ready for run some tests!
-
-.. code-block:: bash
-
-   $ tox
+   $ make test
