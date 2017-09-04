@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+3.3.0
+-----
+
+- Preventing the user to use the same connection in different processes.
+
+
 3.2.0
 -----
 

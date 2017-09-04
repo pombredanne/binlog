@@ -4,6 +4,7 @@ from functools import reduce, wraps
 from itertools import islice
 from pathlib import Path
 import operator as op
+import os
 import threading
 
 import lmdb
@@ -22,9 +23,12 @@ Resources = namedtuple('Resources', ['env', 'txn', 'db'])
 def same_thread(f):
     @wraps(f)
     def wrapper(self, *args, **kwargs):
-        if self.thread_id != threading.current_thread():
+        if self.tid != threading.current_thread():
             raise BadUsageError(
                 ("Sharing connections among threads is not supported."))
+        elif self.pid != os.getpid():
+            raise BadUsageError(
+                ("Sharing connections among processes is not supported."))
         else:
             return f(self, *args, **kwargs)
 
@@ -53,8 +57,9 @@ class Connection:
         self._readers_env = None
         self.refcount = 0
 
-        self.thread_id = threading.current_thread()
-        if self.thread_id != threading.main_thread():
+        self.pid = os.getpid()
+        self.tid = threading.current_thread()
+        if self.tid != threading.main_thread():
             raise BadUsageError(
                 ("This version doesn't support using connections "
                  "outside the main thread."))
@@ -110,8 +115,11 @@ class Connection:
             self.refcount -= 1
 
     def __enter__(self):
-        if self.thread_id != threading.current_thread():
+        if self.tid != threading.current_thread():
             raise RuntimeError("Connection made from a different thread!")
+        elif self.pid != os.getpid():
+            raise BadUsageError(
+                ("Sharing connections among processes is not supported."))
         else:
             return self
 
