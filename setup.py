@@ -5,15 +5,15 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(HERE, 'README.rst')).read()
 CHANGELOG = open(os.path.join(HERE, 'CHANGELOG.rst')).read()
 
-VERSION = '3.3.0'
+VERSION = '4.0.0'
 
 setup(name='binlog',
       version=VERSION,
       description="Store/Recover python objects sequencially.",
       long_description=README + '\n\n' + CHANGELOG,
       classifiers=[
-          'Programming Language :: Python :: 3.4',
-          'Development Status :: 4 - Beta',
+          'Programming Language :: Python :: 3',
+          'Development Status :: 5 - Production/Stable',
           'Topic :: Database',
           'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)'
       ],
@@ -27,8 +27,4 @@ setup(name='binlog',
       zip_safe=False,
       install_requires=[
           'lmdb==0.92'
-      ],
-      extras_require={
-          'migration':  ['bsddb3==6.1.0',
-                         'acidfile==1.2.1'],
-      })
+      ])
