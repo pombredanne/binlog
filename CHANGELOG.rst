@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+4.0.0
+-----
+
+- Removed compatibility code from version <= 2
+
 3.3.0
 -----
 
