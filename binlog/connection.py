@@ -9,7 +9,6 @@ import threading
 
 import lmdb
 
-from .connectionmanager import PROCESS_CONNECTIONS
 from .databases import Config, Checkpoints, Entries
 from .exceptions import IntegrityError, ReaderDoesNotExist, BadUsageError
 from .reader import Reader
@@ -107,6 +106,10 @@ class Connection:
             self.readers_env = None
 
             self.refcount -= 1
+
+            # This MUST be imported every time because can be invalidated by
+            # `reset_connections`.
+            from .connectionmanager import PROCESS_CONNECTIONS
             PROCESS_CONNECTIONS.close(self.path)
 
         elif self.refcount < 1:

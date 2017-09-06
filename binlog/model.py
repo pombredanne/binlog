@@ -48,6 +48,8 @@ class Model(dict, metaclass=ModelMeta):
 
     @classmethod
     def open(cls, path, **kwargs):
+        # This MUST be imported every time because can be invalidated by
+        # `reset_connections`.
         from .connectionmanager import PROCESS_CONNECTIONS
 
         return PROCESS_CONNECTIONS.open(
