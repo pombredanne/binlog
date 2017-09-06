@@ -1,10 +1,20 @@
 CHANGELOG
 =========
 
+4.1.0
+-----
+
+- Added function `reset_connections` under `binlog.connectionmanager` module to
+  reset the per process connection cache. This function will be called
+  automatically on Python 3.7 on children processes after forks. Older versions
+  of Python MUST call it explicitly.
+
+
 4.0.0
 -----
 
 - Removed compatibility code from version <= 2
+
 
 3.3.0
 -----
