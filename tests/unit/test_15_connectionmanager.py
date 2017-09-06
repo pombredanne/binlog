@@ -105,3 +105,13 @@ def test_connectionmanager_is_connected():
                path=path,
                connection_class=connection_class,
                kwargs=kwargs)
+
+
+def test_reset_connections():
+    from binlog.connectionmanager import reset_connections, PROCESS_CONNECTIONS
+    old_process_connections = PROCESS_CONNECTIONS
+
+    reset_connections()
+
+    from binlog.connectionmanager import reset_connections, PROCESS_CONNECTIONS
+    assert old_process_connections is not PROCESS_CONNECTIONS

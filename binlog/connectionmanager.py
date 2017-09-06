@@ -30,3 +30,18 @@ class ConnectionManager:
 
 
 PROCESS_CONNECTIONS = ConnectionManager()
+
+
+def reset_connections():
+    """
+    Reset the process connection manager.
+
+    This is neccessary after fork, otherwise the user will get a BadUsageError.
+
+    TODO: With the introduction of `os.register_at_fork` in Python 3.7 this can
+    be done automatically passing this callback to `after_in_child`. This
+    registration will be done and tested in the future.
+
+    """
+    global PROCESS_CONNECTIONS
+    PROCESS_CONNECTIONS = ConnectionManager()
