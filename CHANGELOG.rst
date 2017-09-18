@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+
+4.2.0
+-----
+
+- New method clone_reader to create a new reader with the content of an
+  existing one.
+
+
 4.1.0
 -----
 
