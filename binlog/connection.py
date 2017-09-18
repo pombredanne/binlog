@@ -276,12 +276,14 @@ class Connection:
 
     @open_db
     @same_thread
-    def register_reader(self, name):
+    def register_reader(self, name, content=None):
         path = name.split('.')
 
         with self.readers(write=True) as res:
             with Checkpoints.cursor(res) as cursor:
-                result = cursor.put(name, Registry(), overwrite=False)
+                if content is None:
+                    content = Registry()
+                result = cursor.put(name, content, overwrite=False)
 
         parents = path[:-1]
         if not parents:
@@ -289,6 +291,12 @@ class Connection:
         else:
             parents_result = self.register_reader('.'.join(parents))
             return result or parents_result
+
+    @open_db
+    @same_thread
+    def clone_reader(self, src, dst):
+        with self.reader(src) as sreader:
+            self.register_reader(dst, content=sreader.registry)
 
     @open_db
     @same_thread
