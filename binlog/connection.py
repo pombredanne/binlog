@@ -210,6 +210,27 @@ class Connection:
                     value = entry.pk
                     cursor.delete(key, value)
 
+    @open_db
+    @same_thread
+    def _drop_indexes(self):
+        with self.data(write=True) as res:
+            for index_name, index in self.model._indexes.items():
+                db_name = self._get_index_name(index_name)
+                res.txn.drop(res.db[db_name], delete=True)
+
+    @open_db
+    @same_thread
+    def _reindex(self):
+        with self.data(write=True) as res:
+            with Entries.cursor(res) as cursor:
+                found = cursor.first()
+                if found:
+                    for key, value in cursor.iternext():
+                        entry = self.model(**value)
+                        entry.pk = key
+                        entry.saved = True
+                        self._index(res, entry)
+                        print(".", end="", flush=True)
 
     @open_db
     @same_thread

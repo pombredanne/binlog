@@ -1,6 +1,7 @@
 import re
 
 from .connection import Connection
+from .exceptions import BadUsageError
 from .index import Index
 from .serializer import NumericSerializer, ObjectSerializer
 
@@ -72,3 +73,18 @@ class Model(dict, metaclass=ModelMeta):
                 self.mark_as_saved(pk)
 
             return success
+
+    @classmethod
+    def reindex(cls, path, **kwargs):
+        with cls.open(path, **kwargs) as conn:
+            print("Drop")
+            conn._drop_indexes()
+
+        with cls.open(path, **kwargs) as conn:
+            print("Create")
+            with conn.data(write=True):
+                pass
+
+        with cls.open(path, **kwargs) as conn:
+            print("Reindex")
+            conn._reindex()

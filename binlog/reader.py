@@ -142,8 +142,12 @@ class Reader:
                                 db_name = self.connection._get_index_name(key)
                                 index_cursor = index_filter.enter_context(
                                     index.cursor(res, db_name=db_name))
-                                index_cursor.dupkey = value
-                                it &= index_cursor
+                                try:
+                                    index_cursor.dupkey = value
+                                except ValueError:
+                                    return
+                                else:
+                                    it &= index_cursor
 
                         for pk in it:
                             try:

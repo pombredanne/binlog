@@ -120,6 +120,9 @@ class CursorProxy(IterSeek):
         else:
             return self._from_value(raw)
 
+    def first(self):
+        return self.cursor.first()
+
     def put(self, key, value, **kwargs):
         return self.cursor.put(self._to_key(key),
                                self._to_value(value),
@@ -148,7 +151,7 @@ class CursorProxy(IterSeek):
             for raw_key in iterator:
                 yield self._from_key(raw_key)
         elif values:
-            for raw_key in iterator:
+            for raw_value in iterator:
                 yield self._from_value(raw_value)
         else:
             raise ValueError("keys and/or values must be true")
