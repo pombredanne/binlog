@@ -5,10 +5,8 @@ import enum
 
 
 class Direction(enum.Enum):
-    #: Forward
-    F = 1
-    #: Backward
-    B = -1
+    F = 1   #: Forward
+    B = -1  #: Backward
 
 
 class Database(metaclass=abc.ABCMeta):
