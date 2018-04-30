@@ -21,8 +21,12 @@ class Database(metaclass=abc.ABCMeta):
         pass
 
     @classmethod
+    def get_db_name(cls, db_name):
+        return cls.__name__.lower() if db_name is None else db_name
+
+    @classmethod
     def get_db_handler(cls, res, db_name=None):
-        db_name = cls.__name__.lower() if db_name is None else db_name
+        db_name = cls.get_db_name(db_name)
         return res.db.get(db_name)
 
     @classmethod
@@ -30,8 +34,8 @@ class Database(metaclass=abc.ABCMeta):
     def cursor(cls, res, db_name=None, direction=Direction.F):
         from .cursor import CursorProxy
 
-        db_name = cls.__name__.lower() if db_name is None else db_name
-        db_handler = res.db.get(db_name)
+        db_name = cls.get_db_name(db_name)
+        db_handler = res.db[db_name]
         with res.txn.cursor(db_handler) as cursor:
             yield CursorProxy(cls, res, cursor, db_name, direction=direction)
 

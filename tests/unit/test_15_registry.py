@@ -289,13 +289,11 @@ def test_registries_support_intersection__same_point():
     assert registry_x1.acked == registry_x2.acked == list([S(0, 0)])
 
 
-@given(points=st.sets(st.integers(min_value=0,
-                                  max_value=100),
-                      average_size=50))
+@given(points=st.sets(st.integers(min_value=0, max_value=100)))
 def test_registry_is_iterator(points):
     from binlog.registry import Registry
 
-    r = Registry() 
+    r = Registry()
     for p in points:
         r.add(p)
 

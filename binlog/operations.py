@@ -1,6 +1,7 @@
 import operator as op
 
 from binlog.abstract import IterSeek, Direction
+from binlog.registry import S
 
 
 class BinaryIterSeek(IterSeek):

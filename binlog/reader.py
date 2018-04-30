@@ -100,10 +100,19 @@ class Reader:
         return entry
 
     def __iterseek__(self, direction):
-        if self.registry is None:
+        from .registry import DBRegistry, MemoryCachedDBRegistry
+        if self.name is None:
             return RegistryIterSeek(~Registry(), direction=direction)
         else:
-            return RegistryIterSeek(~self.registry, direction=direction)
+            return MemoryCachedDBRegistry(
+                connection=self.connection,
+                name=self.name,
+                direction=direction,
+                inverted=True,
+                registry=self.registry.memory.registry)
+        # if self.registry is None:
+        # else:
+        #     return RegistryIterSeek(~self.registry, direction=direction)
 
     def __iter__(self):
         with MaskException(lmdb.ReadonlyError, StopIteration):

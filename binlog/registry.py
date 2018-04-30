@@ -1,14 +1,21 @@
 from bisect import insort, bisect_left
 from collections import namedtuple
 from itertools import count, cycle
+import lmdb
 
 from .abstract import IterSeek, Direction
+from .exceptions import ReaderDoesNotExist
+from .databases import Registry as RegistryDB
 from .util import popminleft, consume
+from .util import MaskException
+
+
+MAXINT = 2**64-1
 
 
 class S(namedtuple('Segment', ('L', 'R'))):
     MIN = 0
-    MAX = 2**64-1
+    MAX = MAXINT
 
     def __contains__(self, value):
         return self.L <= value <= self.R
@@ -16,13 +23,234 @@ class S(namedtuple('Segment', ('L', 'R'))):
     def __and__(self, other):
         L = max(self.L, other.L)
         R = min(self.R, other.R)
-        return S(L, R) if L<=R else None
+        return S(L, R) if L <= R else None
 
     def forward(self):
         return iter(range(self.L, self.R + 1))
 
     def backward(self):
         return iter(range(self.R, self.L - 1, -1))
+
+
+class MemoryCachedDBRegistry(IterSeek):
+    def __init__(self, connection, name, direction=Direction.F, inverted=False,
+                 registry=None):
+
+        self.inverted = inverted
+
+        if registry is None:
+            registry = Registry()
+
+        if self.inverted:
+            self.memory = RegistryIterSeek(~registry, direction=direction)
+            self.db = ~DBRegistry(name, connection, direction=direction)
+        else:
+            self.memory = RegistryIterSeek(registry, direction=direction)
+            self.db = DBRegistry(name, connection, direction=direction)
+
+        self.seeked = True
+        self.direction = direction
+        self._iter = None
+
+    def __contains__(self, value):
+        return value in self.memory.registry or value in self.db
+
+    @property
+    def acked(self):
+        return self.memory.registry.acked
+
+    @property
+    def add(self):
+        return self.memory.registry.add
+
+    def seek(self, pos):
+        self.memory.seek(pos)
+        self.db.seek(pos)
+        self.seeked = True
+
+    def __next__(self):
+        if self.seeked:
+            if self.inverted:
+                self._iter = iter(self.memory & self.db)
+            else:
+                self._iter = iter(self.memory | self.db)
+
+            self.seeked = False
+        return next(self._iter)
+
+
+def writefixture(conn, name):
+    with conn.readers(write=True) as res:
+        res.db[name] = res.env.open_db(key=name.encode('utf-8'), txn=res.txn)
+        with RegistryDB.named(name).cursor(res) as cursor:
+            cursor.put(20, 1)
+            cursor.put(40, 30)
+            cursor.put(150, 50)
+            cursor.put(153, 152)
+
+
+def console(conn, name):
+    with conn.readers(write=True) as res:
+        with RegistryDB.named(name).cursor(res) as cursor:
+            import ipdb
+            ipdb.set_trace()
+            cursor
+
+
+class BaseDBRegistry(IterSeek):
+    def __init__(self, name, connection, direction=Direction.F):
+        self.name = name
+        self.conn = connection
+        self.direction = direction
+        self.last = None
+        self._iter = None
+
+        self.curr_s = None  # Current segment
+
+    def _get_segment_by_pos(self, pos):
+        raise NotImplementedError("Must be implemented in subclass.")
+
+    def __contains__(self, value):
+        segment = self._get_segment_by_pos(value)
+        if segment is None:
+            return False
+        else:
+            return segment.L <= value <= segment.R
+
+    def seek(self, pos):
+        segment = self._get_segment_by_pos(pos)
+        if segment is None:
+            return False
+        else:
+            if segment.L <= pos <= segment.R:
+                if self.direction is Direction.F:
+                    self._iter = iter(range(pos, segment.R + 1))
+                else:
+                    self._iter = iter(range(pos, segment.L - 1, -1))
+            else:
+                if self.direction is Direction.F:
+                    self._iter = iter(range(segment.L, segment.R + 1))
+                else:
+                    self._iter = iter(range(segment.R, segment.L - 1, -1))
+
+            return True
+
+    def __next__(self):
+        if self._iter is None:
+            if self.direction is Direction.F:
+                if not self.seek(0):
+                    raise StopIteration
+            else:
+                if not self.seek(MAXINT):
+                    raise StopIteration
+
+        try:
+            self.last = next(self._iter)
+        except StopIteration:
+            if self.direction is Direction.F:
+                if not self.seek(self.last + 1):
+                    raise StopIteration
+            else:
+                if not self.seek(self.last - 1):
+                    raise StopIteration
+            return self.__next__()
+        else:
+            return self.last
+
+
+class IDBRegistry(BaseDBRegistry):
+    """Inverted DBRegistry"""
+
+    @MaskException(lmdb.ReadonlyError, ReaderDoesNotExist)
+    def _get_segment_by_pos(self, pos):
+        """
+        Return the next segment given `pos` and self.direction.
+
+        """
+        with self.conn.readers(write=False) as res:
+            with RegistryDB.named(self.name).cursor(res) as cursor:
+                found = cursor.set_range(pos)
+                if not found:
+                    # Past the end of the database
+                    if self.direction is Direction.F:
+                        return S(pos, S.MAX)
+                    else:
+                        if cursor.last():
+                            end, start = cursor.item()
+                            return S(end + 1, pos)
+                        else:
+                            # Empty
+                            return S(S.MIN, S.MAX)
+                else:
+                    end, start = cursor.item()
+                    if start <= pos <= end:
+                        # `pos` is in the segment
+                        if self.direction is Direction.F:
+                            if cursor.next():
+                                s2_end, s2_start = cursor.item()
+                                return S(end + 1, s2_start - 1)
+                            else:
+                                return S(end + 1, S.MAX)
+                        else:
+                            if cursor.prev():
+                                s2_end, s2_start = cursor.item()
+                                return S(s2_end + 1, start - 1)
+                            else:
+                                return S(S.MIN, start - 1)
+                    else:
+                        if self.direction is Direction.F:
+                            return S(pos, start - 1)
+                        else:
+                            if cursor.prev():
+                                end, start = cursor.item()
+                                return S(end + 1, pos)
+                            else:
+                                return S(S.MIN, pos)
+
+    def __invert__(self):
+        return DBRegistry(self.name, self.conn, direction=self.direction)
+
+
+class DBRegistry(BaseDBRegistry):
+    @MaskException(lmdb.ReadonlyError, ReaderDoesNotExist)
+    def _get_segment_by_pos(self, pos):
+        """
+        Return the next segment given `pos` and self.direction.
+
+        """
+        with self.conn.readers(write=False) as res:
+            with RegistryDB.named(self.name).cursor(res) as cursor:
+                found = cursor.set_range(pos)
+                if not found:
+                    # Past the end of the database
+                    if self.direction is Direction.F:
+                        return None
+                    else:
+                        if cursor.last():
+                            end, start = cursor.item()
+                            return S(start, end)
+                        else:
+                            # Empty
+                            return None
+                else:
+                    end, start = cursor.item()
+                    if start <= pos <= end:
+                        # `pos` is in the segment
+                        return S(start, end)
+                    else:
+                        if self.direction is Direction.F:
+                            # Because set_range position the cursor in the next
+                            # segment.
+                            return S(start, end)
+                        else:
+                            if cursor.prev():
+                                end, start = cursor.item()
+                                return S(start, end)
+                            else:
+                                return None
+
+    def __invert__(self):
+        return IDBRegistry(self.name, self.conn, direction=self.direction)
 
 
 class RegistryIterSeek(IterSeek):
@@ -98,9 +326,9 @@ class RegistryIterSeek(IterSeek):
                         # Sl > Sc > Sn | Except on edges
                         if self.last_s.L > pos > self.curr_s.R:
                             return self.__next__()
-                        elif (pos not in self.last_s 
-                            and self.last_s.L < pos > self.curr_s.R
-                            and self.last_s.L < self.curr_s.R):
+                        elif (pos not in self.last_s
+                              and self.last_s.L < pos > self.curr_s.R
+                              and self.last_s.L < self.curr_s.R):
                             return self.__next__()
         else:
             if self.curr_s is None:
@@ -148,7 +376,7 @@ class Registry:
             return False
         else:
             for i, segment in enumerate(self.acked):
-                left, right = segment.L, segment.R 
+                left, right = segment.L, segment.R
 
                 if right == idx - 1:
                     try:
