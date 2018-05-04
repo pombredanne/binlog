@@ -41,22 +41,22 @@ Set of databases storing indexes for the `Entries` database. A database
 is created for each index with the following naming scheme: TBD.
 
 
-The `Checkpoint` environment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The `Readers` environment
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The `Readers` database
-++++++++++++++++++++++
+In this environment there is a database for each registered reader.
 
-In this database readers store a register of which entries of the
-`Entries` database are readed and successfully processed. There is one
-or more entries in the `Reader` database environment for each reader in the
-system in the form '{reader_name}::{key}'.
+Each database consists on entries which keys and values represent the end and
+the start (respectively) of readed `Entries` segments.
 
+For example, if a reader database contains:
 
-.. todo::
+  +-----+-------+
+  | Key | Value |
+  +-----+-------+
+  | 10  | 0     |
+  | 25  | 15    |
+  +-----+-------+
 
-   A better explaination of subregisters.
-
-   One reader may have one or more entries in the database to store
-   different views of the ack status for its internal use. 
-
+This reader has already readed and acked entries 0 to 10 and 15 to 25 of the
+`Entries` database.

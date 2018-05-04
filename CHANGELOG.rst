@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+5.0.0
+-----
+
+- Registries implemented as lmdb databases.
+- New method connection.ack_from_filter.
+- Migration tool "python -m binlog.migrateregistry".
+
 
 4.2.0
 -----

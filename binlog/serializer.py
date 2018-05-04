@@ -13,7 +13,9 @@ class NumericSerializer(Serializer):
     def python_value(value):
         return struct.unpack("!Q", value)[0]
 
-    db_value = staticmethod(partial(struct.pack, "!Q"))
+    @staticmethod
+    def db_value(value):
+        return struct.pack("!Q", int(value))
 
 
 class TextSerializer(Serializer):
