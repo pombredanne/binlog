@@ -264,7 +264,7 @@ class Connection:
             pass
         finally:
             with self.readers(write=False) as res:
-                res.env.copy(readers_path)
+                res.env.copy(readers_path, compact=True)
 
         data_path = _gen_path('data_env_directory')
         try:
@@ -273,7 +273,7 @@ class Connection:
             pass
         finally:
             with self.data(write=False) as res:
-                res.env.copy(data_path)
+                res.env.copy(data_path, compact=True)
 
     @open_db
     @same_thread
