@@ -1,11 +1,9 @@
 from functools import reduce
 from tempfile import TemporaryDirectory
 import operator as op
-import struct
 
-from hypothesis import given, example
+from hypothesis import given, example, settings
 from hypothesis import strategies as st
-import lmdb
 import pytest
 
 from binlog.model import Model
@@ -47,9 +45,9 @@ def test_purge_with_one_reader(acked):
 
 
 @given(acked_list=st.lists(st.sets(st.integers(min_value=0, max_value=99)),
-                           min_size=1,
-                           average_size=5))
-@example(acked_list = [{0}, set()])
+                           min_size=1))
+@settings(deadline=None)
+@example(acked_list=[{0}, set()])
 def test_purge_with_multiple_reader(acked_list):
     with TemporaryDirectory() as tmpdir:
         with Model.open(tmpdir) as db:
@@ -62,7 +60,7 @@ def test_purge_with_multiple_reader(acked_list):
                     for pk in acked:
                         reader.ack(reader[pk])
 
-            common = reduce(op.and_, acked_list) 
+            common = reduce(op.and_, acked_list)
 
             removed, not_found = db.purge()
             assert removed == len(common)

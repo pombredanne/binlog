@@ -123,6 +123,15 @@ class CursorProxy(IterSeek):
     def first(self):
         return self.cursor.first()
 
+    def last(self):
+        return self.cursor.last()
+
+    def next(self):
+        return self.cursor.next()
+
+    def prev(self):
+        return self.cursor.prev()
+
     def put(self, key, value, **kwargs):
         return self.cursor.put(self._to_key(key),
                                self._to_value(value),
@@ -161,6 +170,13 @@ class CursorProxy(IterSeek):
 
     def iterprev(self, keys=True, values=True):
         return self._iterate(self.cursor.iterprev(keys, values), keys, values)
+
+    def item(self):
+        raw_key, raw_value = self.cursor.item()
+        return (self._from_key(raw_key), self._from_value(raw_value))
+
+    def delete2(self, dupdata=False):
+        return self.cursor.delete(dupdata=dupdata)
 
     def delete(self, key, value=None):
         db_handler = self.db.get_db_handler(self.res, self.db_name)

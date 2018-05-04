@@ -2,10 +2,11 @@ Features
 ========
 
 
-Inmutable entries
+Immutable entries
 -----------------
 
-Only two operations are allowed in the `Entries` database: append and delete.
+Only two operations are allowed in the `Entries` database: append and
+delete.
 
 No entry can be modified in any way.
 

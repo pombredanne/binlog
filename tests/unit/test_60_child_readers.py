@@ -82,6 +82,7 @@ def test_multiple_child_reader_recursive_ack(tmpdir):
             assert not list(reader)
 
 
+@pytest.mark.wip
 def test_multiple_child_reader_recursive_ack_results(tmpdir):
     with Model.open(tmpdir) as db:
 

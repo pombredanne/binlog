@@ -19,3 +19,17 @@ class Entries(NumericIndex):
 class Checkpoints(Database):
     K = NullListSerializer
     V = ObjectSerializer
+
+
+class Registry(Database):
+    K = NumericSerializer
+    V = NumericSerializer
+
+    @classmethod
+    def named(cls, name):
+        return type(name, (cls, ), {})
+
+
+class Hints(Database):
+    K = TextSerializer
+    V = NumericSerializer

@@ -10,6 +10,7 @@ import threading
 import lmdb
 
 from .databases import Config, Checkpoints, Entries
+from .databases import Registry as RegistryDB
 from .exceptions import IntegrityError, ReaderDoesNotExist, BadUsageError
 from .reader import Reader
 from .registry import Registry
@@ -17,6 +18,23 @@ from .util import MaskException
 
 
 Resources = namedtuple('Resources', ['env', 'txn', 'db'])
+
+
+class DBOpener:
+    def __init__(self, env, txn, **kwargs):
+        self.env = env
+        self.txn = txn
+        self.kwargs = kwargs
+        self._dbs = {}
+
+    def __getitem__(self, name):
+        if name not in self._dbs:
+            self._dbs[name] = self.env.open_db(
+                key=name.encode('utf-8'),
+                txn=self.txn,
+                **self.kwargs)
+
+        return self._dbs[name]
 
 
 def same_thread(f):
@@ -90,7 +108,7 @@ class Connection:
         # Open READERS ENV
         self.readers_env = lmdb.open(
             self._gen_path('readers_env_directory'),
-            max_dbs=1,
+            max_dbs=2**20,
             **self.kwargs)
 
     def close(self):
@@ -173,10 +191,10 @@ class Connection:
     def readers(self, write=True):
         env = self.readers_env
         with env.begin(write=write, buffers=True) as txn:
-            checkpoints_db = self._get_db(env, txn, 'checkpoints_db_name')
+#            checkpoints_db = self._get_db(env, txn, 'checkpoints_db_name')
             yield Resources(env=env,
                             txn=txn,
-                            db={'checkpoints': checkpoints_db})
+                            db=DBOpener(env, txn))
 
     def _get_next_event_idx(self, res):
         with Config.cursor(res) as cursor:
@@ -230,7 +248,32 @@ class Connection:
                         entry.pk = key
                         entry.saved = True
                         self._index(res, entry)
-                        print(".", end="", flush=True)
+
+    @open_db
+    @same_thread
+    def compact(self, path):
+        def _gen_path(metaname):
+            basename = Path(str(path))
+            dirname = Path(self.model._meta[metaname])
+            return str(basename / dirname)
+
+        readers_path = _gen_path('readers_env_directory')
+        try:
+            os.makedirs(readers_path)
+        except:
+            pass
+        finally:
+            with self.readers(write=False) as res:
+                res.env.copy(readers_path, compact=True)
+
+        data_path = _gen_path('data_env_directory')
+        try:
+            os.makedirs(data_path)
+        except:
+            pass
+        finally:
+            with self.data(write=False) as res:
+                res.env.copy(data_path, compact=True)
 
     @open_db
     @same_thread
@@ -284,68 +327,129 @@ class Connection:
     @same_thread
     @MaskException(lmdb.ReadonlyError, ReaderDoesNotExist)
     def reader(self, name=None):
-        if name is not None:
-            with self.readers(write=False) as res:
-                with Checkpoints.cursor(res) as cursor:
-                    registry = cursor.get(name, default=None)
-                    if registry is None:
-                        raise ReaderDoesNotExist
-        else:
-            registry = None
+        if name is not None and name not in self.list_readers():
+            raise ReaderDoesNotExist("%s reader does not exists" % name)
+
+        from binlog.registry import MemoryCachedDBRegistry
+        from binlog.abstract import Direction
+
+        registry = MemoryCachedDBRegistry(
+            name=name,
+            connection=self,
+            direction=Direction.F) if name in self.list_readers() else None
 
         return Reader(self, name, registry)
 
     @open_db
     @same_thread
     def register_reader(self, name, content=None):
-        path = name.split('.')
-
-        with self.readers(write=True) as res:
-            with Checkpoints.cursor(res) as cursor:
-                if content is None:
-                    content = Registry()
-                result = cursor.put(name, content, overwrite=False)
-
-        parents = path[:-1]
-        if not parents:
-            return result
+        if name in self.list_readers():
+            return False
         else:
-            parents_result = self.register_reader('.'.join(parents))
-            return result or parents_result
+            path = name.split('.')
+
+            with self.readers(write=True) as res:
+                with RegistryDB.named(name).cursor(res) as cursor:
+                    if content is not None:
+                        raise NotImplementedError("XXX")
+                    result = True
+
+            parents = path[:-1]
+            if not parents:
+                return result
+            else:
+                parents_result = self.register_reader('.'.join(parents))
+                return result or parents_result
 
     @open_db
     @same_thread
     def clone_reader(self, src, dst):
-        with self.reader(src) as sreader:
-            self.register_reader(dst, content=sreader.registry)
+        readers = self.list_readers()
+        if src not in readers:
+            raise ReaderDoesNotExist("%s reader does not exists." % src)
+        elif dst in readers:
+            raise RuntimeError("%s reader already exists." % dst)
+        else:
+            with self.readers(write=True) as res:
+                with RegistryDB.named(src).cursor(res) as scursor:
+                    with RegistryDB.named(dst).cursor(res) as dcursor:
+                        dcursor.putmulti(scursor.iternext())
 
     @open_db
     @same_thread
     @MaskException(lmdb.ReadonlyError, ReaderDoesNotExist)
     def unregister_reader(self, name):
-        with self.readers(write=True) as res:
-            with Checkpoints.cursor(res) as cursor:
-                if cursor.pop(name) is None:
-                    raise ReaderDoesNotExist
-                else:
-                    return True
+        if name not in self.list_readers():
+            raise ReaderDoesNotExist("%s reader does not exists" % name)
+        else:
+            with self.readers(write=True) as res:
+                res.txn.drop(res.db[name])
+                return True
 
     @open_db
     @same_thread
-    def save_registry(self, name, new_registry):
+    def save_registry(self, name, added):
         with self.readers(write=True) as res:
-            with Checkpoints.cursor(res) as cursor:
-                stored_registry = cursor.get(name, default=Registry())
-                return cursor.put(name,
-                                  stored_registry | new_registry,
-                                  overwrite=True)
+            with RegistryDB.named(name).cursor(res) as cursor:
+                for s in added.acked:
+                    s_L = max([s.MIN, s.L - 1])
+                    s_R = min([s.MAX, s.R + 1])
+
+                    if cursor.set_range(s_L):
+                        f_R, f_L = cursor.item()
+                        if f_L <= s_L:
+                            first = (f_L, f_R)
+                        else:
+                            first = None
+                    else:
+                        first = None
+
+                    if cursor.set_range(s_R):
+                        l_R, l_L = cursor.item()
+                        if l_L <= s_R:
+                            last = (l_L, l_R)
+                        else:
+                            last = None
+                    else:
+                        last = None
+
+                    if first is None and last is None:
+                        cursor.put(s.R, s.L)
+                    else:
+                        if last is None:
+                            cursor.get(f_R)
+                            while cursor.delete2():
+                                pass
+                            cursor.put(s.R, f_L)
+                        elif first is None:
+                            while cursor.first():
+                                c_R, c_L = cursor.item()
+                                cursor.delete2()
+                                if (c_L, c_R) == (l_L, l_R):
+                                    break
+                            cursor.put(l_R, s.L)
+                        else:
+                            # Both present
+                            if first == last:
+                                # This means is already in the segment, so
+                                # already acked. Nothing to do here.
+                                pass
+                            else:
+                                cursor.get(f_R)
+                                while cursor.delete2():
+                                    c_R, c_L = cursor.item()
+                                    if (c_L, c_R) == (l_L, l_R):
+                                        cursor.delete2()
+                                        break
+                                cursor.put(l_R, f_L)
+                return True
 
     @open_db
     @same_thread
     def list_readers(self):
         with self.readers(write=True) as res:
-            with Checkpoints.cursor(res) as cursor:
-                return list(cursor.iternext(values=False))
+            with res.txn.cursor() as cursor:
+                return [bytes(x).decode("utf-8") for x in cursor.iternext(values=False)]
 
     @open_db
     @same_thread
@@ -372,8 +476,14 @@ class Connection:
         if chunk_size < 1:
             raise ValueError("chunk_size must be greater than 0")
 
-        registries = [self.reader(name).registry
-                      for name in self.list_readers()]
+        registries = []
+
+        for name in self.list_readers():
+            try:
+                registries.append(self.reader(name).registry)
+            except ReaderDoesNotExist:
+                pass
+
         removed = not_found = 0
         if registries:
             common_acked = iter(reduce(op.and_, registries))
