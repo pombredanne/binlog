@@ -251,6 +251,32 @@ class Connection:
 
     @open_db
     @same_thread
+    def compact(self, path):
+        def _gen_path(metaname):
+            basename = Path(str(path))
+            dirname = Path(self.model._meta[metaname])
+            return str(basename / dirname)
+
+        readers_path = _gen_path('readers_env_directory')
+        try:
+            os.makedirs(readers_path)
+        except:
+            pass
+        finally:
+            with self.readers(write=False) as res:
+                res.env.copy(readers_path)
+
+        data_path = _gen_path('data_env_directory')
+        try:
+            os.makedirs(data_path)
+        except:
+            pass
+        finally:
+            with self.data(write=False) as res:
+                res.env.copy(data_path)
+
+    @open_db
+    @same_thread
     def create(self, **kwargs):
         with self.data(write=True) as res:
             next_idx = self._get_next_event_idx(res)
