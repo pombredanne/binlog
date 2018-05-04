@@ -108,7 +108,7 @@ class Connection:
         # Open READERS ENV
         self.readers_env = lmdb.open(
             self._gen_path('readers_env_directory'),
-            max_dbs=200,
+            max_dbs=2**20,
             **self.kwargs)
 
     def close(self):
@@ -248,7 +248,6 @@ class Connection:
                         entry.pk = key
                         entry.saved = True
                         self._index(res, entry)
-                        print(".", end="", flush=True)
 
     @open_db
     @same_thread
@@ -451,8 +450,14 @@ class Connection:
         if chunk_size < 1:
             raise ValueError("chunk_size must be greater than 0")
 
-        registries = [self.reader(name).registry
-                      for name in self.list_readers()]
+        registries = []
+
+        for name in self.list_readers():
+            try:
+                registries.append(self.reader(name).registry)
+            except ReaderDoesNotExist:
+                pass
+
         removed = not_found = 0
         if registries:
             common_acked = iter(reduce(op.and_, registries))

@@ -28,3 +28,8 @@ class Registry(Database):
     @classmethod
     def named(cls, name):
         return type(name, (cls, ), {})
+
+
+class Hints(Database):
+    K = TextSerializer
+    V = NumericSerializer

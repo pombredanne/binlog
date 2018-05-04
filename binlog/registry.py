@@ -55,6 +55,10 @@ class MemoryCachedDBRegistry(IterSeek):
     def __contains__(self, value):
         return value in self.memory.registry or value in self.db
 
+    def length(self):
+        return {'memory': len(self.memory.registry.acked),
+                'disk': len(self.db)}
+
     @property
     def acked(self):
         return self.memory.registry.acked
@@ -106,6 +110,16 @@ class BaseDBRegistry(IterSeek):
         self._iter = None
 
         self.curr_s = None  # Current segment
+
+    @MaskException(lmdb.ReadonlyError, ReaderDoesNotExist)
+    def __len__(self):
+        with self.conn.readers(write=False) as res:
+            with RegistryDB.named(self.name).cursor(res) as cursor:
+                found = cursor.first()
+                if not found:
+                    return 0
+                else:
+                    return sum(1 for _ in cursor.iternext())
 
     def _get_segment_by_pos(self, pos):
         raise NotImplementedError("Must be implemented in subclass.")
