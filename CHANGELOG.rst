@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+5.1.0
+-----
+
+- ANDIterSeek and ORIterSeek reimplemented in a non-recursive way.
+- Improved purge(). Now it doesn't try to remove all previously removed entries.
+
+
 5.0.0
 -----
 
