@@ -486,18 +486,20 @@ class Connection:
 
         removed = not_found = 0
         if registries:
-            common_acked = iter(reduce(op.and_, registries))
-            idx = chunk_size
-            while idx == chunk_size:
-                idx = 0
-                it = islice(common_acked, 0, chunk_size)
-                with self.data(write=True) as res:
-                    with Entries.cursor(res) as cursor:
-                        for idx, pk in enumerate(it, 1):
-                            value = cursor.pop(pk)
-                            if value is not None:
-                                removed += 1
-                                self._unindex(res, self.model(**value))
-                            else:
-                                not_found += 1
+            with self.data(write=False) as resr:
+                with Entries.cursor(resr) as rcursor:
+                    common_acked = iter(reduce(op.and_, registries, rcursor))
+                    idx = chunk_size
+                    while idx == chunk_size:
+                        idx = 0
+                        it = islice(common_acked, 0, chunk_size)
+                        with self.data(write=True) as res:
+                            with Entries.cursor(res) as cursor:
+                                for idx, pk in enumerate(it, 1):
+                                    value = cursor.pop(pk)
+                                    if value is not None:
+                                        removed += 1
+                                        self._unindex(res, self.model(**value))
+                                    else:
+                                        not_found += 1
         return removed, not_found

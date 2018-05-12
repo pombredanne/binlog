@@ -77,6 +77,8 @@ def test_purge_with_multiple_reader(acked_list):
 
 @given(acked=st.sets(st.integers(min_value=0, max_value=99)))
 def test_purge_with_not_found(acked):
+    from binlog.databases import Entries
+
     with TemporaryDirectory() as tmpdir:
         with Model.open(tmpdir) as db:
             entries = [Model(idx=i) for i in range(100)]
@@ -87,11 +89,19 @@ def test_purge_with_not_found(acked):
                 for pk in acked:
                     reader.ack(reader[pk])
 
-            removed_1, not_found_1 = db.purge(chunk_size=10)
-            removed_2, not_found_2 = db.purge(chunk_size=10)
+            # Delete everything
+            with db.data(write=True) as res:
+                with Entries.cursor(res) as cursor:
+                    for pk in range(100):
+                        cursor.pop(pk)
 
-            assert removed_1 == not_found_2 == len(acked)
-            assert removed_2 == not_found_1 == 0
+            removed, not_found = db.purge(chunk_size=10)
+
+            assert removed == 0
+
+            # Because purge now uses ANDS the Entries cursor with
+            # `common_acked`, "not_found" always will be 0.
+            assert not_found == 0
 
 
 def test_purge_chunk_size_min_size(tmpdir):
