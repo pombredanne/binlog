@@ -1,83 +1,67 @@
-import operator as op
-
 from binlog.abstract import IterSeek, Direction
 from binlog.registry import S
 
 
 class BinaryIterSeek(IterSeek):
-    def __init__(self, a, b):
-        self.a = a
-        self.b = b
+    def __init__(self, *things):
+        self.things = list()
 
-        if self.a.direction != self.b.direction:
+        for thing in things:
+            if isinstance(thing, self.__class__):
+                self.things.extend(thing.things)
+            else:
+                self.things.append(thing)
+
+        if len(set(t.direction for t in self.things)) != 1:
             raise ValueError("both iterseeks must have the same direction")
 
-        self.direction = self.a.direction
+        self.direction = self.things[0].direction
+        self.seeked = None
+
+    def seek(self, value):
+        self.seeked = value
 
 
 class ANDIterSeek(BinaryIterSeek):
-    def seek(self, value):
-        self.a.seek(value)
-        self.b.seek(value)
-
     def __next__(self):
-        a_val = next(self.a)
-        b_val = next(self.b)
-        while True:
-            if a_val > b_val:
-                if self.direction is Direction.F:
-                    self.b.seek(a_val)
-                    b_val = next(self.b)
-                else:
-                    self.a.seek(b_val)
-                    a_val = next(self.a)
-            elif a_val < b_val:
-                if self.direction is Direction.F:
-                    self.a.seek(b_val)
-                    a_val = next(self.a)
-                else:
-                    self.b.seek(a_val)
-                    b_val = next(self.b)
+        first, rest = self.things[0], self.things[1:]
+        if self.seeked is not None and S.MIN <= self.seeked <= S.MAX:
+            first.seek(self.seeked)
+            self.seeked = None
+        for cf in first:
+            for t in rest:
+                t.seek(cf)
+                ct = next(t)
+                if cf != ct:
+                    first.seek(ct)
+                    break
             else:
-                return a_val
+                self.seeked = cf + self.direction.value
+                return cf
+        else:
+            raise StopIteration
 
 
 class ORIterSeek(BinaryIterSeek):
-    def __init__(self, a, b):
-        super().__init__(a, b)
-        self._iter = self._nextiter()
-
-    def _nextiter(self):
+    def __next__(self):
         if self.direction is Direction.F:
             comp = min
-            limit = float('inf')
+            R = float('inf')
         else:
             comp = max
-            limit = float('-inf')
+            R = float('-inf')
 
-        a = (self.a, next(self.a, limit))
-        b = (self.b, next(self.b, limit))
-        v = None
-    
-        while v is not limit:
-            c, v = comp((a, b),
-                        key=op.itemgetter(1),
-                        default=(None, limit))
-    
-            if v is not limit:
-                yield v
-                if a[1] == b[1]:
-                    a = (self.a, next(self.a, limit))
-                    b = (self.b, next(self.b, limit))
-                elif c is self.a:
-                    a = (self.a, next(self.a, limit))
-                else:
-                    b = (self.b, next(self.b, limit))
-
-    def seek(self, value):
-        self.a.seek(value)
-        self.b.seek(value)
-        self._iter = self._nextiter()
-
-    def __next__(self):
-        return next(self._iter)
+        for t in self.things:
+            if self.seeked is not None:
+                t.seek(self.seeked)
+            c = next(t, R)
+            if c == self.seeked:
+                self.seeked += self.direction.value
+                return c
+            else:
+                R = comp((R, c))
+        if R < S.MIN or R > S.MAX:
+            raise StopIteration
+        else:
+            self.seeked = R + self.direction.value
+            return R

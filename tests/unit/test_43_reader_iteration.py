@@ -17,7 +17,7 @@ def test_reader_reads_bulk_create(tmpdir):
 
         db.register_reader('myreader')
         with db.reader('myreader') as reader:
-            for current, expected in zip_longest(entries, reader):
+            for current, expected in zip_longest(reader, entries):
                 assert current == expected
 
 
@@ -30,7 +30,7 @@ def test_reader_reads_create(entries):
 
             db.register_reader('myreader')
             with db.reader('myreader') as reader:
-                for current, expected in zip_longest(entries, reader):
+                for current, expected in zip_longest(reader, entries):
                     assert current == expected
 
 
@@ -41,8 +41,8 @@ def test_reader_reversed_read(tmpdir):
 
         db.register_reader('myreader')
         with db.reader('myreader') as reader:
-            for current, expected in zip_longest(reversed(entries),
-                                                 reversed(reader)):
+            for current, expected in zip_longest(reversed(reader),
+                                                 reversed(entries)):
                 assert current == expected
 
 
