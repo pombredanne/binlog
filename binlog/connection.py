@@ -447,9 +447,18 @@ class Connection:
     @open_db
     @same_thread
     def list_readers(self):
+        readers = list()
         with self.readers(write=True) as res:
             with res.txn.cursor() as cursor:
-                return [bytes(x).decode("utf-8") for x in cursor.iternext(values=False)]
+                for raw in cursor.iternext(values=False):
+                    try:
+                        name = bytes(raw).decode("utf-8")
+                    except:
+                        continue
+                    else:
+                        if name != "Hints":
+                            readers.append(name)
+        return readers
 
     @open_db
     @same_thread
