@@ -456,7 +456,7 @@ class Connection:
                     except:
                         continue
                     else:
-                        if name != "Hints":
+                        if name != "hints":
                             readers.append(name)
         return readers
 
