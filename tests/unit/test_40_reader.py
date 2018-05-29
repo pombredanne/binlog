@@ -4,6 +4,7 @@ import pytest
 
 from binlog.model import Model
 from binlog.exceptions import ReaderDoesNotExist
+from binlog.connection import RESERVED_READER_NAMES
 
 
 def test_readers_environment_does_not_exist(tmpdir):
@@ -171,3 +172,10 @@ def test_reader_filter_exact_index_and_nonindex(tmpdir):
                     assert False, (a, b)
                 else:
                     assert a.pk == b
+
+
+@pytest.mark.parametrize("name", RESERVED_READER_NAMES)
+def test_cant_register_reserved_reader_names(tmpdir, name):
+    with Model.open(tmpdir) as db:
+        with pytest.raises(ValueError):
+            db.register_reader(name)

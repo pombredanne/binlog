@@ -45,18 +45,6 @@ def test_connection_close(tmpdir):
     assert conn.closed
 
 
-@pytest.mark.wip
-def test_connection_is_context_manager(tmpdir):
-    with patch('lmdb.open') as lmdbopen:
-        with Model.open(tmpdir) as conn:
-            assert not conn.closed
-
-            lmdbopen.assert_any_call(str(tmpdir) + "/readers", max_dbs=1)
-            lmdbopen.assert_any_call(str(tmpdir) + "/data", max_dbs=2)
-
-    assert conn.closed
-
-
 @pytest.mark.parametrize("io_method", io_methods)
 def test_cannot_use_same_connection_from_multiple_threads(tmpdir, io_method):
     conn = Model.open(tmpdir)
