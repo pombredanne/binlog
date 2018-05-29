@@ -17,4 +17,7 @@ def test_list_readers(readers):
             for name in readers:
                 db.register_reader(name)
 
+            # 'hints' should be ignored by list_readers()
+            db.register_reader('hints')
+
             assert set(db.list_readers()) == readers
