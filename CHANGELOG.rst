@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+5.1.1
+-----
+
+- The readers module now contains a set of reserved readers names which can't
+  be used. These reader names are now filtered from `list_readers` and not
+  allowed to be created nor removed.
+
+
 5.1.0
 -----
 
