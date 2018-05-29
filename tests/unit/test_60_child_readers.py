@@ -82,37 +82,6 @@ def test_multiple_child_reader_recursive_ack(tmpdir):
             assert not list(reader)
 
 
-@pytest.mark.wip
-def test_multiple_child_reader_recursive_ack_results(tmpdir):
-    with Model.open(tmpdir) as db:
-
-        entries = [Model(idx=i) for i in range(10)]
-        db.bulk_create(entries)
-
-        db.register_reader('parent.child.grandchild1')
-        db.register_reader('parent.child.grandchild2')
-
-        with db.reader('parent.child.grandchild1') as reader:
-            for i in range(5, 10):
-                assert reader.recursive_ack(reader[i])
-
-        with db.reader('parent.child.grandchild1') as reader:
-            for i in range(5, 10):
-                assert not reader.recursive_ack(reader[i])
-
-        with db.reader('parent.child.grandchild2') as reader:
-            for i in range(10):
-                assert reader.recursive_ack(reader[i])
-
-        with db.reader('parent.child') as reader:
-            for i in range(10):
-                assert not reader.recursive_ack(reader[i])
-
-        with db.reader('parent') as reader:
-            for i in range(10):
-                assert not reader.recursive_ack(reader[i])
-
-
 def test_clone_reader_inherits_progress(tmpdir):
     with Model.open(tmpdir) as db:
 

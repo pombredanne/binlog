@@ -9,13 +9,13 @@ import threading
 
 import lmdb
 
-from .databases import Config, Checkpoints, Entries
+from .databases import Config, Entries
 from .databases import Registry as RegistryDB
 from .exceptions import IntegrityError, ReaderDoesNotExist, BadUsageError
 from .reader import Reader
-from .registry import Registry
 from .util import MaskException
 
+RESERVED_READER_NAMES = {"hints"}
 
 Resources = namedtuple('Resources', ['env', 'txn', 'db'])
 
@@ -347,6 +347,8 @@ class Connection:
             return False
         else:
             path = name.split('.')
+            if path[0] in RESERVED_READER_NAMES:
+                raise ValueError("Reader name not allowed.")
 
             with self.readers(write=True) as res:
                 with RegistryDB.named(name).cursor(res) as cursor:
@@ -456,7 +458,7 @@ class Connection:
                     except:
                         continue
                     else:
-                        if name != "hints":
+                        if name not in RESERVED_READER_NAMES:
                             readers.append(name)
         return readers
 
